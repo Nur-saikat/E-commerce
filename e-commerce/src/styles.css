@@ -1,0 +1,218 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces', 'Georgia', serif;
+
+  --color-ink-50: #f7f6f4;
+  --color-ink-100: #eceae5;
+  --color-ink-200: #d8d4ca;
+  --color-ink-300: #b8b1a2;
+  --color-ink-400: #948b78;
+  --color-ink-500: #78705f;
+  --color-ink-600: #615a4c;
+  --color-ink-700: #4f493e;
+  --color-ink-800: #35312a;
+  --color-ink-900: #1c1a16;
+  --color-ink-950: #12110e;
+
+  --color-cream: #faf7f1;
+  --color-sand: #f1eade;
+  --color-gold-300: #e3cf9c;
+  --color-gold-400: #d7bd7c;
+  --color-gold-500: #c8a96a;
+  --color-gold-600: #ab8b4c;
+
+  --color-success: #2f7d5d;
+  --color-danger: #b3403a;
+  --color-warning: #b07a26;
+
+  --shadow-luxe: 0 24px 60px -32px rgba(28, 26, 22, 0.35);
+  --shadow-card: 0 12px 32px -20px rgba(28, 26, 22, 0.35);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-ink-200);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-ink-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  ::selection {
+    background: var(--color-gold-300);
+    color: var(--color-ink-950);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .container-luxe {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold tracking-wide transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink-900 px-5 py-3 text-sm font-semibold tracking-wide text-cream transition-all duration-200 hover:bg-ink-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gold-500 px-5 py-3 text-sm font-semibold tracking-wide text-ink-950 transition-all duration-200 hover:bg-gold-400 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-ink-900/20 bg-transparent px-5 py-3 text-sm font-semibold tracking-wide text-ink-900 transition-all duration-200 hover:border-ink-900 hover:bg-ink-900/5 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold tracking-wide text-ink-700 transition-all duration-200 hover:bg-ink-900/5 hover:text-ink-900 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-danger px-5 py-3 text-sm font-semibold tracking-wide text-white transition-all duration-200 hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-sm {
+    @apply px-4 py-2 text-xs;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-sm text-ink-900 shadow-none transition placeholder:text-ink-400 focus:border-gold-500 focus:ring-2 focus:ring-gold-500/20 focus:outline-none disabled:bg-ink-50;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-600;
+  }
+
+  .card {
+    @apply rounded-2xl border border-ink-100 bg-white shadow-[var(--shadow-card)];
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide;
+  }
+
+  .badge-gold {
+    @apply inline-flex items-center gap-1 rounded-full bg-gold-300/40 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-ink-900;
+  }
+
+  .badge-dark {
+    @apply inline-flex items-center gap-1 rounded-full bg-ink-900 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-cream;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-emerald-700;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-red-700;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-amber-700;
+  }
+
+  .badge-muted {
+    @apply inline-flex items-center gap-1 rounded-full bg-ink-50 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-ink-600;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-semibold text-ink-900 sm:text-4xl;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.28em] text-gold-600;
+  }
+
+  .link-underline {
+    @apply relative after:absolute after:bottom-0 after:left-0 after:h-px after:w-0 after:bg-current after:transition-all after:duration-300 hover:after:w-full;
+  }
+
+  .table-luxe {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .table-luxe thead th {
+    @apply border-b border-ink-200 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-500;
+  }
+
+  .table-luxe tbody td {
+    @apply border-b border-ink-100 px-4 py-3.5 align-middle text-ink-800;
+  }
+
+  .table-luxe tbody tr:hover {
+    @apply bg-ink-50/60;
+  }
+
+  .admin-card {
+    @apply rounded-2xl border border-ink-100 bg-white p-5 shadow-sm;
+  }
+
+  .admin-title {
+    @apply text-xl font-semibold tracking-tight text-ink-900;
+  }
+
+  .page-enter {
+    animation: page-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #ece8e0 25%, #f6f3ee 50%, #ece8e0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

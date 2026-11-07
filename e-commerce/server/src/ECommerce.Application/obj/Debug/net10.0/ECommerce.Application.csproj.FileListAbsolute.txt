@@ -1,0 +1,17 @@
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.csproj.AssemblyReference.cache
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.GeneratedMSBuildEditorConfig.editorconfig
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.AssemblyInfoInputs.cache
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.AssemblyInfo.cs
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.csproj.CoreCompileInputs.cache
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Application.deps.json
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Application.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Application.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Domain.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Shared.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Domain.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\bin\Debug\net10.0\ECommerce.Shared.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerc.670E0CBE.Up2Date
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\refint\ECommerce.Application.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ref\ECommerce.Application.dll

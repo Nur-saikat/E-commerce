@@ -1,0 +1,11 @@
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.GeneratedMSBuildEditorConfig.editorconfig
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.AssemblyInfoInputs.cache
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.AssemblyInfo.cs
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.csproj.CoreCompileInputs.cache
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\bin\Debug\net10.0\ECommerce.Shared.deps.json
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\bin\Debug\net10.0\ECommerce.Shared.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\bin\Debug\net10.0\ECommerce.Shared.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\refint\ECommerce.Shared.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.pdb
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ref\ECommerce.Shared.dll

@@ -17,16 +17,18 @@ public class OrderService
     private readonly SettingsService _settings;
     private readonly CouponService _coupons;
     private readonly CartService _cartService;
+    private readonly VoucherService _vouchers;
     private readonly ICurrentUser _currentUser;
     private readonly IEmailSender _email;
 
     public OrderService(IUnitOfWork uow, SettingsService settings, CouponService coupons,
-        CartService cartService, ICurrentUser currentUser, IEmailSender email)
+        CartService cartService, VoucherService vouchers, ICurrentUser currentUser, IEmailSender email)
     {
         _uow = uow;
         _settings = settings;
         _coupons = coupons;
         _cartService = cartService;
+        _vouchers = vouchers;
         _currentUser = currentUser;
         _email = email;
     }
@@ -35,7 +37,9 @@ public class OrderService
     {
         var settings = await _settings.GetEntityAsync(ct);
         var paymentMethod = NormalizePaymentMethod(request.PaymentMethod);
-        ValidatePaymentMethod(paymentMethod, settings);
+        var payWithPointsOnly = paymentMethod == PaymentProviders.Voucher;
+        if (payWithPointsOnly) request.UseVoucherPoints = true;
+        else ValidatePaymentMethod(paymentMethod, settings);
 
         var userId = CurrentUserId;
         var cart = userId.HasValue
@@ -69,6 +73,7 @@ public class OrderService
                 ImageUrl = variant?.ImageUrl ?? product.ThumbnailUrl ?? product.Images.FirstOrDefault(),
                 VariantName = variant?.Name,
                 UnitPrice = unitPrice,
+                UnitCost = product.CostPrice,
                 Quantity = cartItem.Quantity,
                 LineTotal = Math.Round(unitPrice * cartItem.Quantity, 2)
             });
@@ -104,6 +109,42 @@ public class OrderService
         var tax = Math.Round((subtotal - discount) * settings.TaxRate / 100m, 2);
         var total = Math.Round(subtotal - discount + shippingCost + tax, 2);
 
+        var pointsRedeemed = 0;
+        var pointsDiscount = 0m;
+        if (request.UseVoucherPoints)
+        {
+            if (!settings.VoucherPointsEnabled)
+                throw new BadRequestException("Voucher point redemption is currently unavailable");
+            if (!userId.HasValue)
+                throw new BadRequestException("Sign in to redeem voucher points");
+            if (settings.VoucherPointValue <= 0)
+                throw new BadRequestException("Voucher point conversion is not configured");
+
+            var balance = await _vouchers.GetBalanceAsync(userId.Value.ToString(), ct);
+            var maxAmount = Math.Round(total * Math.Clamp(settings.VoucherMaxRedeemPercent, 0, 100) / 100m, 2);
+            var spendable = Math.Min(maxAmount, VoucherService.AmountForPoints(balance, settings));
+            pointsRedeemed = VoucherService.PointsForAmount(spendable, settings);
+            if (pointsRedeemed < balance && VoucherService.AmountForPoints(pointsRedeemed, settings) < spendable)
+                pointsRedeemed++;
+            pointsDiscount = Math.Min(spendable, VoucherService.AmountForPoints(pointsRedeemed, settings));
+            if (pointsDiscount > total)
+            {
+                pointsDiscount = total;
+                pointsRedeemed = VoucherService.PointsForAmount(pointsDiscount, settings);
+                pointsDiscount = VoucherService.AmountForPoints(pointsRedeemed, settings);
+            }
+            total = Math.Round(total - pointsDiscount, 2);
+        }
+
+        var fullyCoveredByPoints = total <= 0 && pointsRedeemed > 0;
+        if (payWithPointsOnly && !fullyCoveredByPoints)
+            throw new BadRequestException("Your voucher points do not cover the full order total");
+        if (fullyCoveredByPoints)
+        {
+            total = 0;
+            paymentMethod = PaymentProviders.Voucher;
+        }
+
         var customerEmail = userId.HasValue ? _currentUser.Email ?? request.GuestEmail : request.GuestEmail;
         if (string.IsNullOrWhiteSpace(customerEmail))
             throw new BadRequestException("Email address is required for guest checkout");
@@ -127,18 +168,33 @@ public class OrderService
             Discount = discount,
             TaxAmount = tax,
             Total = total,
-            Status = OrderStatus.Pending,
+            PointsRedeemed = pointsRedeemed,
+            PointsDiscount = pointsDiscount,
+            Status = fullyCoveredByPoints ? OrderStatus.Confirmed : OrderStatus.Pending,
             PaymentMethod = paymentMethod,
-            PaymentStatus = PaymentStatus.Pending,
+            PaymentStatus = fullyCoveredByPoints ? PaymentStatus.Paid : PaymentStatus.Pending,
             Notes = request.Notes,
             CreatedBy = _currentUser.UserId
         };
         order.StatusHistory.Add(new OrderStatusHistory
         {
-            Status = OrderStatus.Pending,
-            Note = "Order placed",
+            Status = order.Status,
+            Note = fullyCoveredByPoints
+                ? $"Order paid in full with {pointsRedeemed} voucher points"
+                : pointsRedeemed > 0
+                    ? $"Order placed · {pointsRedeemed} voucher points applied"
+                    : "Order placed",
             ChangedBy = _currentUser.Email ?? customerEmail
         });
+
+        var pointsDebited = false;
+        if (pointsRedeemed > 0)
+        {
+            await _vouchers.DebitAsync(userId!.Value.ToString(), customerEmail, pointsRedeemed,
+                order.Id.ToString(), order.OrderNumber,
+                $"Redeemed on order {order.OrderNumber}", ct);
+            pointsDebited = true;
+        }
 
         var committed = new List<(OrderItem Item, Product Product)>();
         try
@@ -160,6 +216,10 @@ public class OrderService
         {
             foreach (var (item, product) in committed)
                 await IncrementStockAsync(product.Id, item.VariantId, item.Quantity, ct);
+            if (pointsDebited)
+                await _vouchers.CreditAsync(userId!.Value.ToString(), customerEmail, pointsRedeemed,
+                    VoucherTransactionTypes.Reversal, order.Id.ToString(), order.OrderNumber,
+                    "Voucher points restored after checkout failed", ct);
             throw;
         }
 
@@ -173,6 +233,10 @@ public class OrderService
         {
             foreach (var (item, product) in committed)
                 await IncrementStockAsync(product.Id, item.VariantId, item.Quantity, ct);
+            if (pointsDebited)
+                await _vouchers.CreditAsync(userId!.Value.ToString(), customerEmail, pointsRedeemed,
+                    VoucherTransactionTypes.Reversal, order.Id.ToString(), order.OrderNumber,
+                    "Voucher points restored after checkout failed", ct);
             throw;
         }
 
@@ -201,9 +265,12 @@ public class OrderService
             OrderNumber = order.OrderNumber,
             UserId = userId,
             Provider = paymentMethod,
-            Amount = total,
+            Amount = fullyCoveredByPoints ? pointsDiscount : total,
             Currency = settings.Currency,
-            Status = PaymentStatus.Pending,
+            Status = fullyCoveredByPoints ? PaymentStatus.Paid : PaymentStatus.Pending,
+            TransactionId = fullyCoveredByPoints ? $"VCHR-{order.OrderNumber}" : null,
+            ProviderReference = fullyCoveredByPoints ? $"VCHR-{order.OrderNumber}" : null,
+            VerifiedAt = fullyCoveredByPoints ? DateTime.UtcNow : null,
             CreatedBy = _currentUser.UserId
         }, ct);
 
@@ -360,7 +427,7 @@ public class OrderService
         if (status == OrderStatus.Cancelled)
             return await CancelInternalAsync(order, request.Note ?? "Cancelled by admin", true, ct);
         if (status == OrderStatus.Refunded)
-            return await RefundAsync(id, request.Note, ct);
+            return await RefundAsync(id, new RefundRequest { Note = request.Note }, ct);
 
         if (!OrderStatus.AllowedTransitions.TryGetValue(order.Status, out var allowed) || !allowed.Contains(status))
             throw new BadRequestException($"Cannot change order status from {order.Status} to {status}");
@@ -384,6 +451,7 @@ public class OrderService
                     Builders<Product>.Filter.Eq(p => p.Id, item.ProductId),
                     Builders<Product>.Update.Inc(p => p.SoldCount, item.Quantity), ct);
             }
+            await AwardPointsAsync(order, ct);
         }
         order.StatusHistory.Add(new OrderStatusHistory
         {
@@ -396,11 +464,33 @@ public class OrderService
         return order.ToDto();
     }
 
-    public async Task<OrderDto> RefundAsync(string id, string? note, CancellationToken ct = default)
+    public async Task<OrderDto> RefundAsync(string id, RefundRequest? request, CancellationToken ct = default)
     {
+        request ??= new RefundRequest();
         var order = await FindOrderAsync(id, ct);
+        if (order.Status == OrderStatus.Refunded)
+            throw new BadRequestException("This order has already been refunded");
         if (order.PaymentStatus != PaymentStatus.Paid && order.Status != OrderStatus.Completed)
             throw new BadRequestException("Only paid orders can be refunded");
+
+        var destination = string.IsNullOrWhiteSpace(request.Destination)
+            ? RefundDestinations.Original
+            : request.Destination.Trim();
+        if (!RefundDestinations.All.Contains(destination))
+            throw new BadRequestException("Choose a valid refund method");
+
+        var settings = await _settings.GetEntityAsync(ct);
+        if (destination == RefundDestinations.Voucher && !settings.VoucherPointsEnabled)
+            throw new BadRequestException("Voucher point refunds are currently unavailable");
+        if (destination == RefundDestinations.Voucher && !order.UserId.HasValue)
+            throw new BadRequestException("This guest order has no customer account for voucher points; choose a monetary refund");
+        if (RefundDestinations.IsMobileBanking(destination) && string.IsNullOrWhiteSpace(request.AccountNumber))
+            throw new BadRequestException("Enter the mobile banking account number for the refund");
+        if (destination == RefundDestinations.BankTransfer &&
+            (string.IsNullOrWhiteSpace(request.AccountNumber) ||
+             string.IsNullOrWhiteSpace(request.AccountName) ||
+             string.IsNullOrWhiteSpace(request.BankName)))
+            throw new BadRequestException("Enter the bank name, account name and account number for the refund");
 
         if (!order.StockRestored)
         {
@@ -409,14 +499,39 @@ public class OrderService
             order.StockRestored = true;
         }
 
+        var monetaryAmount = Math.Round(order.Total, 2);
+        var pointsToCredit = order.PointsRedeemed;
+        if (destination == RefundDestinations.Voucher)
+            pointsToCredit += VoucherService.PointsForAmount(monetaryAmount, settings);
+
+        if (pointsToCredit > 0 && order.UserId.HasValue)
+        {
+            await _vouchers.CreditAsync(order.UserId.Value.ToString(), order.CustomerEmail, pointsToCredit,
+                VoucherTransactionTypes.Refund, order.Id.ToString(), order.OrderNumber,
+                destination == RefundDestinations.Voucher
+                    ? $"Order refund converted to voucher points"
+                    : $"Voucher points returned with refund",
+                ct);
+        }
+
         order.Status = OrderStatus.Refunded;
         order.PaymentStatus = PaymentStatus.Refunded;
+        order.RefundedAmount = Math.Round(order.RefundedAmount + (destination == RefundDestinations.Voucher ? 0 : monetaryAmount), 2);
+        order.RefundMethod = destination;
+        order.RefundReference = request.Reference?.Trim();
+        order.RefundedAt = DateTime.UtcNow;
         order.UpdatedAt = DateTime.UtcNow;
         order.UpdatedBy = _currentUser.UserId;
+
+        var summary = destination == RefundDestinations.Voucher
+            ? $"Refund issued as {pointsToCredit} voucher points"
+            : $"Refund issued via {destination} · {monetaryAmount:0.00}";
+        if (pointsToCredit > 0 && destination != RefundDestinations.Voucher)
+            summary += $" + {pointsToCredit} voucher points returned";
         order.StatusHistory.Add(new OrderStatusHistory
         {
             Status = OrderStatus.Refunded,
-            Note = note ?? "Payment refunded",
+            Note = string.IsNullOrWhiteSpace(request.Note) ? summary : $"{summary} · {request.Note!.Trim()}",
             ChangedBy = _currentUser.Email
         });
         await _uow.Orders.UpdateAsync(order, ct);
@@ -474,23 +589,63 @@ public class OrderService
         order.CancellationReason = reason;
         order.UpdatedAt = DateTime.UtcNow;
         order.UpdatedBy = _currentUser.UserId;
-        order.StatusHistory.Add(new OrderStatusHistory
-        {
-            Status = OrderStatus.Cancelled,
-            Note = reason ?? "Order cancelled",
-            ChangedBy = _currentUser.Email
-        });
-        await _uow.Orders.UpdateAsync(order, ct);
 
+        if (order.PointsRedeemed > 0 && order.UserId.HasValue)
+        {
+            await _vouchers.CreditAsync(order.UserId.Value.ToString(), order.CustomerEmail, order.PointsRedeemed,
+                VoucherTransactionTypes.Refund, order.Id.ToString(), order.OrderNumber,
+                $"Voucher points returned for cancelled order {order.OrderNumber}", ct);
+        }
+
+        var refundNote = string.Empty;
         if (order.PaymentStatus == PaymentStatus.Paid)
         {
             await _uow.Payments.UpdateOneAsync(
                 Builders<Payment>.Filter.Eq(p => p.OrderId, order.Id),
-                Builders<Payment>.Update.Set(p => p.Status, PaymentStatus.Refunded), ct);
+                Builders<Payment>.Update
+                    .Set(p => p.Status, PaymentStatus.Refunded)
+                    .Set(p => p.UpdatedAt, DateTime.UtcNow)
+                    .Set(p => p.UpdatedBy, _currentUser.UserId), ct);
+            order.PaymentStatus = PaymentStatus.Refunded;
+            if (order.Total > 0)
+            {
+                order.RefundedAmount = Math.Round(order.RefundedAmount + order.Total, 2);
+                order.RefundMethod = RefundDestinations.Original;
+                order.RefundedAt = DateTime.UtcNow;
+                refundNote = $" · {order.Total:0.00} to be returned via the original payment method";
+            }
+            if (order.PointsRedeemed > 0)
+                refundNote += $" · {order.PointsRedeemed} voucher points returned";
         }
+
+        order.StatusHistory.Add(new OrderStatusHistory
+        {
+            Status = OrderStatus.Cancelled,
+            Note = (reason ?? "Order cancelled") + refundNote,
+            ChangedBy = _currentUser.Email
+        });
+        await _uow.Orders.UpdateAsync(order, ct);
 
         await NotifyStatusAsync(order, OrderStatus.Cancelled, ct);
         return order.ToDto();
+    }
+
+    private async Task AwardPointsAsync(Order order, CancellationToken ct)
+    {
+        if (!order.UserId.HasValue || order.PointsAwarded) return;
+        var settings = await _settings.GetEntityAsync(ct);
+        if (!settings.VoucherPointsEnabled || order.PaymentStatus != PaymentStatus.Paid) return;
+
+        var baseAmount = Math.Max(0, order.Subtotal - order.Discount);
+        var points = VoucherService.PointsForAmount(baseAmount * settings.VoucherEarnPercent / 100m, settings);
+        if (points > 0)
+        {
+            await _vouchers.CreditAsync(order.UserId.Value.ToString(), order.CustomerEmail, points,
+                VoucherTransactionTypes.Earned, order.Id.ToString(), order.OrderNumber,
+                $"Reward for completed order {order.OrderNumber}", ct);
+            order.PointsEarned = points;
+        }
+        order.PointsAwarded = true;
     }
 
     private async Task NotifyStatusAsync(Order order, string status, CancellationToken ct)
@@ -579,6 +734,10 @@ public class OrderService
         if (normalized.Equals("cod", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Cod;
         if (normalized.Equals("stripe", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Stripe;
         if (normalized.Equals("sslcommerz", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.SslCommerz;
+        if (normalized.Equals("bkash", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Bkash;
+        if (normalized.Equals("nagad", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Nagad;
+        if (normalized.Equals("rocket", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Rocket;
+        if (normalized.Equals("voucher", StringComparison.OrdinalIgnoreCase)) return PaymentProviders.Voucher;
         throw new BadRequestException("Unsupported payment method");
     }
 
@@ -589,6 +748,9 @@ public class OrderService
             PaymentProviders.Cod => settings.CodEnabled,
             PaymentProviders.Stripe => settings.StripeEnabled,
             PaymentProviders.SslCommerz => settings.SslCommerzEnabled,
+            PaymentProviders.Bkash => settings.BkashEnabled && !string.IsNullOrWhiteSpace(settings.BkashMerchantNumber),
+            PaymentProviders.Nagad => settings.NagadEnabled && !string.IsNullOrWhiteSpace(settings.NagadMerchantNumber),
+            PaymentProviders.Rocket => settings.RocketEnabled && !string.IsNullOrWhiteSpace(settings.RocketMerchantNumber),
             _ => false
         };
         if (!enabled) throw new BadRequestException("This payment method is not available");

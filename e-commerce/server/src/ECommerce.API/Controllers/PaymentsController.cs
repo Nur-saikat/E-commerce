@@ -1,12 +1,14 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using ECommerce.API.Authorization;
 using ECommerce.Application.Common.Options;
 using ECommerce.Application.DTOs;
 using ECommerce.Application.Services;
 using ECommerce.Shared.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace ECommerce.API.Controllers;
@@ -42,6 +44,17 @@ public class PaymentsController : ApiControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Verify([FromBody] PaymentVerifyRequest request, CancellationToken ct) =>
         Success(await _payments.VerifyAsync(request, ct), "Payment verified");
+
+    [HttpPost("mobile/submit")]
+    [AllowAnonymous]
+    [EnableRateLimiting("payments")]
+    public async Task<IActionResult> SubmitMobile([FromBody] MobilePaymentSubmitRequest request, CancellationToken ct) =>
+        Success(await _payments.SubmitMobileAsync(request, ct), "Transaction submitted for verification");
+
+    [HttpPost("mobile/{orderId}/verify")]
+    [HasPermission(Permissions.OrdersManage)]
+    public async Task<IActionResult> VerifyMobile(string orderId, [FromBody] MobilePaymentVerifyRequest request, CancellationToken ct) =>
+        Success(await _payments.VerifyMobileAsync(orderId, request, ct), "Mobile payment reviewed");
 
     [HttpPost("webhook/{provider}")]
     [AllowAnonymous]

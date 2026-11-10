@@ -17,3 +17,4 @@ F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Infrastructure\obj\Debug\n
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Infrastructure\obj\Debug\net10.0\refint\ECommerce.Infrastructure.dll
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Infrastructure\obj\Debug\net10.0\ECommerce.Infrastructure.pdb
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Infrastructure\obj\Debug\net10.0\ref\ECommerce.Infrastructure.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Infrastructure\obj\Debug\net10.0\ECommerce.Infrastructure.sourcelink.json

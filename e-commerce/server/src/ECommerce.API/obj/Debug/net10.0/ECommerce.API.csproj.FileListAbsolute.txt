@@ -60,4 +60,4 @@ F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\obj\Debug\net10.0\ECom
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\obj\Debug\net10.0\ECommerce.API.genruntimeconfig.cache
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\obj\Debug\net10.0\ref\ECommerce.API.dll
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\bin\Debug\net10.0\ECommerce.API.staticwebassets.runtime.json
-F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\obj\Debug\net10.0\staticwebassets.upToDateCheck.txt
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.API\obj\Debug\net10.0\ECommerce.API.sourcelink.json

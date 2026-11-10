@@ -26,4 +26,12 @@ public interface IUnitOfWork
     IMongoRepository<NewsletterSubscriber> NewsletterSubscribers { get; }
     IMongoRepository<WebsiteSettings> WebsiteSettings { get; }
     IMongoRepository<AuditLog> AuditLogs { get; }
+    IMongoRepository<StaffMember> StaffMembers { get; }
+    IMongoRepository<OwnerProfile> OwnerProfiles { get; }
+    IMongoRepository<CapitalEntry> CapitalEntries { get; }
+    IMongoRepository<ExpenseEntry> ExpenseEntries { get; }
+    IMongoRepository<StockArrival> StockArrivals { get; }
+    IMongoRepository<VoucherWallet> VoucherWallets { get; }
+    IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
+    IMongoRepository<ReturnRequest> ReturnRequests { get; }
 }

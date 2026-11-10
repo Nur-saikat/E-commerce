@@ -14,13 +14,14 @@ import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Icon } from '../../../shared/components/icon/icon';
 import { Pagination } from '../../../shared/components/pagination/pagination';
+import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 
 const TRANSACTION_TYPES = ['Adjustment', 'Restock', 'Sale', 'Return', 'Damage', 'Loss'];
 
 @Component({
   selector: 'app-admin-inventory',
   standalone: true,
-  imports: [ReactiveFormsModule, Icon, Pagination, DatePipe],
+  imports: [ReactiveFormsModule, Icon, Pagination, DatePipe, MoneyPipe],
   template: `
     <div class="space-y-5 page-enter">
       <div class="flex flex-wrap items-end justify-between gap-3">
@@ -63,6 +64,7 @@ const TRANSACTION_TYPES = ['Adjustment', 'Restock', 'Sale', 'Return', 'Damage', 
               <tr>
                 <th class="pl-5">Product</th>
                 <th>Category</th>
+                <th>Cost</th>
                 <th>Base stock</th>
                 <th>Total stock</th>
                 <th>Threshold</th>
@@ -81,6 +83,7 @@ const TRANSACTION_TYPES = ['Adjustment', 'Restock', 'Sale', 'Return', 'Damage', 
                     }
                   </td>
                   <td class="text-xs text-ink-600">{{ item.categoryName || '—' }}</td>
+                  <td class="text-sm text-ink-700">{{ item.costPrice | money }}</td>
                   <td class="text-sm text-ink-700">{{ item.stock }}</td>
                   <td class="text-sm font-semibold text-ink-900">{{ item.totalStock }}</td>
                   <td class="text-sm text-ink-500">{{ item.lowStockThreshold }}</td>
@@ -92,7 +95,7 @@ const TRANSACTION_TYPES = ['Adjustment', 'Restock', 'Sale', 'Return', 'Damage', 
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="7" class="py-10 text-center text-sm text-ink-400">No products match these filters.</td></tr>
+                <tr><td colspan="8" class="py-10 text-center text-sm text-ink-400">No products match these filters.</td></tr>
               }
             </tbody>
           </table>

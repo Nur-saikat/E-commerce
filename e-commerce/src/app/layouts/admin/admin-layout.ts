@@ -134,6 +134,18 @@ export class AdminLayout implements OnInit, OnDestroy {
       ]
     },
     {
+      label: 'Business',
+      items: [
+        { label: 'Overview', link: '/admin/business', icon: 'trending', permission: 'business.view', exact: true },
+        { label: 'Profit & loss', link: '/admin/business/profit-loss', icon: 'chart', permission: 'business.view' },
+        { label: 'Investments', link: '/admin/business/investments', icon: 'wallet', permission: 'business.view' },
+        { label: 'Expenses', link: '/admin/business/expenses', icon: 'receipt', permission: 'business.view' },
+        { label: 'Arrivals', link: '/admin/business/arrivals', icon: 'package', permission: 'business.view' },
+        { label: 'Staff & CVs', link: '/admin/business/staff', icon: 'users', permission: 'business.view' },
+        { label: 'Owner profile', link: '/admin/business/owner', icon: 'user', permission: 'business.view' }
+      ]
+    },
+    {
       label: 'Catalog',
       items: [
         { label: 'Products', link: '/admin/products', icon: 'box', permission: 'products.view' },
@@ -146,6 +158,7 @@ export class AdminLayout implements OnInit, OnDestroy {
       label: 'Sales',
       items: [
         { label: 'Orders', link: '/admin/orders', icon: 'clipboard', permission: 'orders.view' },
+        { label: 'Returns', link: '/admin/returns', icon: 'rotate-ccw', permission: 'orders.view' },
         { label: 'Customers', link: '/admin/customers', icon: 'users', permission: 'customers.view' },
         { label: 'Coupons', link: '/admin/coupons', icon: 'percent', permission: 'coupons.manage' }
       ]
@@ -204,6 +217,10 @@ export class AdminLayout implements OnInit, OnDestroy {
     const last = segments[segments.length - 1] ?? 'admin';
     if (last === 'admin') return 'Dashboard';
     if (last === 'new') return 'New product';
+    if (last === 'profit-loss') return 'Profit & loss';
+    if (last === 'staff') return 'Staff & CVs';
+    if (last === 'owner') return 'Owner profile';
+    if (last === 'business') return 'Business overview';
     if (/^[a-f0-9]{24}$/i.test(last)) {
       const parent = segments[segments.length - 2] ?? '';
       return parent === 'orders' ? 'Order details' : parent === 'products' ? 'Edit product' : 'Details';

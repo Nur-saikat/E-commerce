@@ -33,29 +33,443 @@ public class DatabaseSeeder
         var users = _database.GetCollection<User>("Users");
         if (await users.CountDocumentsAsync(Builders<User>.Filter.Empty, cancellationToken: ct) > 0)
         {
-            _logger.LogInformation("Database already contains data, skipping seed");
-            return;
+            _logger.LogInformation("Database already contains data, skipping base seed");
+        }
+        else
+        {
+            _logger.LogInformation("Seeding database...");
+
+            var roles = await SeedRolesAsync(ct);
+            var permissions = await SeedPermissionsAsync(ct);
+            var usersByName = await SeedUsersAsync(roles, ct);
+            var settings = await SeedSettingsAsync(ct);
+            var shippingMethods = await SeedShippingMethodsAsync(ct);
+            var categories = await SeedCategoriesAsync(ct);
+            var brands = await SeedBrandsAsync(ct);
+            var products = await SeedProductsAsync(categories, brands, ct);
+            await SeedBannersAsync(ct);
+            await SeedTestimonialsAsync(ct);
+            await SeedCouponsAsync(usersByName, ct);
+            await SeedReviewsAsync(products, usersByName, ct);
+            await SeedOrdersAsync(products, usersByName, shippingMethods, settings, ct);
+
+            _logger.LogInformation(
+                "Seed complete: {Users} users, {Categories} categories, {Products} products",
+                usersByName.Count, categories.Count, products.Count);
         }
 
-        _logger.LogInformation("Seeding database...");
+        await EnsureBusinessPermissionsAsync(ct);
+        await EnsurePaymentSettingsAsync(ct);
+        await EnsureVoucherWalletAsync(ct);
+        await EnsureProductCostsAsync(ct);
+        await SeedBusinessDataAsync(ct);
+    }
 
-        var roles = await SeedRolesAsync(ct);
-        var permissions = await SeedPermissionsAsync(ct);
-        var usersByName = await SeedUsersAsync(roles, ct);
-        var settings = await SeedSettingsAsync(ct);
-        var shippingMethods = await SeedShippingMethodsAsync(ct);
-        var categories = await SeedCategoriesAsync(ct);
-        var brands = await SeedBrandsAsync(ct);
-        var products = await SeedProductsAsync(categories, brands, ct);
-        await SeedBannersAsync(ct);
-        await SeedTestimonialsAsync(ct);
-        await SeedCouponsAsync(usersByName, ct);
-        await SeedReviewsAsync(products, usersByName, ct);
-        await SeedOrdersAsync(products, usersByName, shippingMethods, settings, ct);
+    private async Task EnsurePaymentSettingsAsync(CancellationToken ct)
+    {
+        var settings = _database.GetCollection<WebsiteSettings>("WebsiteSettings");
+        var current = await settings.Find(Builders<WebsiteSettings>.Filter.Empty).FirstOrDefaultAsync(ct);
+        if (current is null) return;
 
-        _logger.LogInformation(
-            "Seed complete: {Users} users, {Categories} categories, {Products} products",
-            usersByName.Count, categories.Count, products.Count);
+        var updates = new List<UpdateDefinition<WebsiteSettings>>();
+        if (!current.BkashEnabled && string.IsNullOrWhiteSpace(current.BkashMerchantNumber))
+            updates.Add(Builders<WebsiteSettings>.Update
+                .Set(s => s.BkashEnabled, true)
+                .Set(s => s.BkashMerchantNumber, "01700000000"));
+        if (!current.NagadEnabled && string.IsNullOrWhiteSpace(current.NagadMerchantNumber))
+            updates.Add(Builders<WebsiteSettings>.Update
+                .Set(s => s.NagadEnabled, true)
+                .Set(s => s.NagadMerchantNumber, "01700000000"));
+        if (!current.RocketEnabled && string.IsNullOrWhiteSpace(current.RocketMerchantNumber))
+            updates.Add(Builders<WebsiteSettings>.Update
+                .Set(s => s.RocketEnabled, true)
+                .Set(s => s.RocketMerchantNumber, "01700000000"));
+        if (updates.Count == 0) return;
+
+        updates.Add(Builders<WebsiteSettings>.Update
+            .Set(s => s.VoucherPointsEnabled, true)
+            .Set(s => s.VoucherPointValue, current.VoucherPointValue > 0 ? current.VoucherPointValue : 1)
+            .Set(s => s.VoucherEarnPercent, current.VoucherEarnPercent > 0 ? current.VoucherEarnPercent : 5)
+            .Set(s => s.VoucherMaxRedeemPercent, current.VoucherMaxRedeemPercent > 0 ? current.VoucherMaxRedeemPercent : 100));
+
+        await settings.UpdateOneAsync(
+            Builders<WebsiteSettings>.Filter.Eq(s => s.Id, current.Id),
+            Builders<WebsiteSettings>.Update.Combine(updates), cancellationToken: ct);
+    }
+
+    private async Task EnsureVoucherWalletAsync(CancellationToken ct)
+    {
+        var wallets = _database.GetCollection<VoucherWallet>("VoucherWallets");
+        if (await wallets.CountDocumentsAsync(Builders<VoucherWallet>.Filter.Empty, cancellationToken: ct) > 0)
+            return;
+
+        var customer = await _database.GetCollection<User>("Users")
+            .Find(Builders<User>.Filter.Eq(u => u.Role, AppRoles.Customer))
+            .FirstOrDefaultAsync(ct);
+        if (customer is null) return;
+
+        var now = DateTime.UtcNow;
+        var userId = customer.Id.ToString();
+        await wallets.InsertOneAsync(new VoucherWallet
+        {
+            UserId = userId,
+            UserEmail = customer.Email,
+            Balance = 250,
+            LifetimeEarned = 250,
+            LifetimeRedeemed = 0,
+            CreatedAt = now.AddDays(-30),
+            UpdatedAt = now
+        }, cancellationToken: ct);
+
+        await _database.GetCollection<VoucherTransaction>("VoucherTransactions").InsertManyAsync(new[]
+        {
+            new VoucherTransaction
+            {
+                UserId = userId, UserEmail = customer.Email, Points = 150, BalanceAfter = 150,
+                Type = VoucherTransactionTypes.Earned, Note = "Loyalty reward", CreatedAt = now.AddDays(-21)
+            },
+            new VoucherTransaction
+            {
+                UserId = userId, UserEmail = customer.Email, Points = 100, BalanceAfter = 250,
+                Type = VoucherTransactionTypes.Earned, Note = "Welcome voucher bonus", CreatedAt = now.AddDays(-7)
+            }
+        }, cancellationToken: ct);
+    }
+
+    private async Task EnsureBusinessPermissionsAsync(CancellationToken ct)
+    {
+        var permissions = _database.GetCollection<Permission>("Permissions");
+        foreach (var key in new[] { Permissions.BusinessView, Permissions.BusinessManage })
+        {
+            var exists = await permissions.CountDocumentsAsync(p => p.Key == key, cancellationToken: ct) > 0;
+            if (exists) continue;
+            await permissions.InsertOneAsync(new Permission
+            {
+                Key = key,
+                Name = key.Split('.')[1],
+                Group = key.Split('.')[0],
+                Description = $"Allows {key.Split('.')[1]} access for {key.Split('.')[0]}"
+            }, cancellationToken: ct);
+        }
+
+        var roles = _database.GetCollection<Role>("Roles");
+        var users = _database.GetCollection<User>("Users");
+        var businessPermissions = new[] { Permissions.BusinessView, Permissions.BusinessManage };
+        foreach (var roleName in new[] { AppRoles.SuperAdmin, AppRoles.Admin, AppRoles.Manager, AppRoles.Staff })
+        {
+            var role = await roles.Find(r => r.Name == roleName).FirstOrDefaultAsync(ct);
+            if (role is not null)
+            {
+                await roles.UpdateOneAsync(
+                    Builders<Role>.Filter.Eq(r => r.Id, role.Id),
+                    Builders<Role>.Update.AddToSetEach(r => r.Permissions, businessPermissions),
+                    cancellationToken: ct);
+            }
+            await users.UpdateManyAsync(
+                Builders<User>.Filter.Eq(u => u.Role, roleName),
+                Builders<User>.Update.AddToSetEach(u => u.Permissions, businessPermissions),
+                cancellationToken: ct);
+        }
+    }
+
+    private async Task EnsureProductCostsAsync(CancellationToken ct)
+    {
+        var products = _database.GetCollection<Product>("Products");
+        var pending = await products.Find(Builders<Product>.Filter.And(
+                Builders<Product>.Filter.Eq(p => p.IsDeleted, false),
+                Builders<Product>.Filter.Or(
+                    Builders<Product>.Filter.Exists(p => p.CostPrice, false),
+                    Builders<Product>.Filter.Lte(p => p.CostPrice, 0))))
+            .ToListAsync(ct);
+
+        foreach (var product in pending)
+        {
+            await products.UpdateOneAsync(
+                Builders<Product>.Filter.Eq(p => p.Id, product.Id),
+                Builders<Product>.Update.Set(p => p.CostPrice, Math.Round(product.Price * 0.55m, 2)),
+                cancellationToken: ct);
+        }
+    }
+
+    private async Task SeedBusinessDataAsync(CancellationToken ct)
+    {
+        var ownerCollection = _database.GetCollection<OwnerProfile>("OwnerProfiles");
+        if (await ownerCollection.CountDocumentsAsync(Builders<OwnerProfile>.Filter.Empty, cancellationToken: ct) > 0)
+            return;
+
+        _logger.LogInformation("Seeding business module data...");
+
+        await ownerCollection.InsertOneAsync(new OwnerProfile
+        {
+            FullName = "Safwan Ahmed",
+            BusinessName = "Safwan",
+            Designation = "Founder & Owner",
+            Email = "owner@safwan.store",
+            Phone = "01711223344",
+            Address = "House 12, Road 5, Mirpur, Dhaka 1216, Bangladesh",
+            DateOfBirth = new DateTime(1990, 5, 14, 0, 0, 0, DateTimeKind.Utc),
+            NationalId = "1990 5514 882 001",
+            TinNumber = "441-228-9012",
+            BinNumber = "0044-2289-0135",
+            Bio = "Retail entrepreneur from Mirpur, Dhaka. Founded Safwan in 2021 to bring thoughtfully curated everyday essentials to customers across Bangladesh.",
+            EmploymentHistory = new List<EmploymentHistory>
+            {
+                new()
+                {
+                    Company = "Aarong",
+                    Role = "Retail Operations Manager",
+                    Location = "Dhaka, Bangladesh",
+                    StartDate = new DateTime(2016, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2021, 6, 30, 0, 0, 0, DateTimeKind.Utc),
+                    Description = "Managed flagship store operations, merchandising and a team of 25 retail staff."
+                },
+                new()
+                {
+                    Company = "Safwan",
+                    Role = "Founder & Owner",
+                    Location = "Mirpur, Dhaka",
+                    StartDate = new DateTime(2021, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+                    Description = "Leads buying, finance and day-to-day operations for the Safwan store."
+                }
+            }
+        }, cancellationToken: ct);
+
+        var staff = new List<StaffMember>
+        {
+            new()
+            {
+                EmployeeCode = "EMP-0001",
+                FullName = "Ayesha Rahman",
+                Email = "ayesha.rahman@safwan.store",
+                Phone = "01712001001",
+                Designation = "Store Manager",
+                Department = "Operations",
+                EmploymentType = "FullTime",
+                Status = "Active",
+                JoinedOn = new DateTime(2022, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 45000,
+                Address = "Block C, Mirpur 10, Dhaka",
+                EmergencyContactName = "Mahmud Rahman",
+                EmergencyContactPhone = "01712001999",
+                Notes = "Responsible for store operations, rota planning and daily reconciliation."
+            },
+            new()
+            {
+                EmployeeCode = "EMP-0002",
+                FullName = "Tanvir Hossain",
+                Email = "tanvir.hossain@safwan.store",
+                Phone = "01712001002",
+                Designation = "Inventory Officer",
+                Department = "Operations",
+                EmploymentType = "FullTime",
+                Status = "Active",
+                JoinedOn = new DateTime(2023, 6, 12, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 32000,
+                Address = "Mirpur 1, Dhaka",
+                Notes = "Owns stock counts, supplier receiving and stock arrival records."
+            },
+            new()
+            {
+                EmployeeCode = "EMP-0003",
+                FullName = "Nusrat Jahan",
+                Email = "nusrat.jahan@safwan.store",
+                Phone = "01712001003",
+                Designation = "Customer Support Lead",
+                Department = "Customer Care",
+                EmploymentType = "FullTime",
+                Status = "Active",
+                JoinedOn = new DateTime(2024, 1, 8, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 30000,
+                Address = "Kazipara, Mirpur, Dhaka",
+                Notes = "Handles order support, returns and the customer inbox."
+            },
+            new()
+            {
+                EmployeeCode = "EMP-0004",
+                FullName = "Farhan Ahmed",
+                Email = "farhan.ahmed@safwan.store",
+                Phone = "01712001004",
+                Designation = "Digital Marketing Executive",
+                Department = "Marketing",
+                EmploymentType = "Contract",
+                Status = "Active",
+                JoinedOn = new DateTime(2024, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 28000,
+                Address = "Shewrapara, Mirpur, Dhaka",
+                Notes = "Runs paid campaigns and manages the social media calendar."
+            },
+            new()
+            {
+                EmployeeCode = "EMP-0005",
+                FullName = "Sadia Islam",
+                Email = "sadia.islam@safwan.store",
+                Phone = "01712001005",
+                Designation = "Senior Sales Associate",
+                Department = "Sales",
+                EmploymentType = "PartTime",
+                Status = "Active",
+                JoinedOn = new DateTime(2024, 11, 5, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 18000,
+                Address = "Pallabi, Mirpur, Dhaka"
+            },
+            new()
+            {
+                EmployeeCode = "EMP-0006",
+                FullName = "Rafiq Uddin",
+                Email = "rafiq.uddin@safwan.store",
+                Phone = "01712001006",
+                Designation = "Accounts Officer",
+                Department = "Finance",
+                EmploymentType = "FullTime",
+                Status = "Resigned",
+                JoinedOn = new DateTime(2022, 9, 1, 0, 0, 0, DateTimeKind.Utc),
+                LeftOn = new DateTime(2025, 3, 31, 0, 0, 0, DateTimeKind.Utc),
+                Salary = 35000,
+                Notes = "Resigned to relocate outside Dhaka. Handover completed with the owner."
+            }
+        };
+        await _database.GetCollection<StaffMember>("StaffMembers").InsertManyAsync(staff, cancellationToken: ct);
+
+        await _database.GetCollection<CapitalEntry>("CapitalEntries").InsertManyAsync(new[]
+        {
+            new CapitalEntry { Type = "Investment", Amount = 500000, Source = "Owner", PaymentMethod = "Bank Transfer", Reference = "IBBL-2025-0102", Note = "Initial working capital", EntryDate = new DateTime(2025, 1, 5, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Investment", Amount = 250000, Source = "Owner", PaymentMethod = "Bank Transfer", Reference = "IBBL-2025-0410", Note = "Seasonal stock purchase", EntryDate = new DateTime(2025, 4, 10, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Investment", Amount = 150000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "Showroom renovation", EntryDate = new DateTime(2025, 7, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Loan", Amount = 100000, Source = "Family loan", PaymentMethod = "Bank Transfer", Note = "Interest-free family loan", EntryDate = new DateTime(2025, 9, 15, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Withdrawal", Amount = 50000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "Owner drawing", EntryDate = new DateTime(2025, 12, 20, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Investment", Amount = 200000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "New season inventory", EntryDate = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Investment", Amount = 150000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "Summer collection buy", EntryDate = new DateTime(2026, 5, 5, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Investment", Amount = 100000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "Working capital top-up", EntryDate = new DateTime(2026, 8, 3, 0, 0, 0, DateTimeKind.Utc) },
+            new CapitalEntry { Type = "Withdrawal", Amount = 40000, Source = "Owner", PaymentMethod = "Bank Transfer", Note = "Owner drawing", EntryDate = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc) }
+        }, cancellationToken: ct);
+
+        await _database.GetCollection<ExpenseEntry>("ExpenseEntries").InsertManyAsync(new[]
+        {
+            new ExpenseEntry { Category = "Rent", Title = "Showroom rent - August", Amount = 1200, Vendor = "Mirpur Property Holdings", PaymentMethod = "Bank Transfer", ExpenseDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Rent", Title = "Showroom rent - September", Amount = 1200, Vendor = "Mirpur Property Holdings", PaymentMethod = "Bank Transfer", ExpenseDate = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Marketing", Title = "Meta ads campaign", Amount = 850, Vendor = "Meta", PaymentMethod = "Card", ExpenseDate = new DateTime(2026, 9, 14, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Rent", Title = "Showroom rent - October", Amount = 1200, Vendor = "Mirpur Property Holdings", PaymentMethod = "Bank Transfer", ExpenseDate = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Utilities", Title = "Internet and utilities", Amount = 320, Vendor = "Link3 / DPDC", PaymentMethod = "Cash", ExpenseDate = new DateTime(2026, 10, 6, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Transport", Title = "Courier and packaging", Amount = 640, Vendor = "Sundarban Courier", PaymentMethod = "Cash", ExpenseDate = new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Rent", Title = "Showroom rent - November", Amount = 1200, Vendor = "Mirpur Property Holdings", PaymentMethod = "Bank Transfer", ExpenseDate = new DateTime(2026, 11, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ExpenseEntry { Category = "Packaging", Title = "Packaging materials", Amount = 480, Vendor = "Dhaka Packaging", PaymentMethod = "Cash", ExpenseDate = new DateTime(2026, 11, 5, 0, 0, 0, DateTimeKind.Utc) }
+        }, cancellationToken: ct);
+
+        var products = await _database.GetCollection<Product>("Products")
+            .Find(Builders<Product>.Filter.Eq(p => p.IsDeleted, false))
+            .Sort(Builders<Product>.Sort.Descending(p => p.SoldCount))
+            .Limit(6)
+            .ToListAsync(ct);
+
+        if (products.Count > 0)
+        {
+            var suppliers = new[] { "Dhaka Wholesale Ltd", "Aurelia Distribution", "Nordform BD", "Kestrel Supply Co." };
+            var arrivals = new List<StockArrival>();
+            for (var i = 0; i < Math.Min(products.Count, 6); i++)
+            {
+                var product = products[i];
+                arrivals.Add(new StockArrival
+                {
+                    ProductId = product.Id,
+                    ProductName = product.Name,
+                    Quantity = 20 + i * 5,
+                    UnitCost = product.CostPrice > 0 ? product.CostPrice : Math.Round(product.Price * 0.55m, 2),
+                    Supplier = suppliers[i % suppliers.Length],
+                    Reference = $"GRN-2026-{(i + 1):000}",
+                    Note = "Opening purchase recorded during onboarding",
+                    ArrivalDate = new DateTime(2026, 8 + i % 3, 4 + i, 0, 0, 0, DateTimeKind.Utc),
+                    StockApplied = false
+                });
+            }
+            await _database.GetCollection<StockArrival>("StockArrivals").InsertManyAsync(arrivals, cancellationToken: ct);
+        }
+
+        await SeedBusinessOrderHistoryAsync(products, ct);
+    }
+
+    private async Task SeedBusinessOrderHistoryAsync(List<Product> products, CancellationToken ct)
+    {
+        if (products.Count == 0) return;
+        var customer = await _database.GetCollection<User>("Users")
+            .Find(Builders<User>.Filter.Eq(u => u.Role, AppRoles.Customer))
+            .FirstOrDefaultAsync(ct);
+        if (customer is null) return;
+
+        var orders = new List<Order>();
+        var payments = new List<Payment>();
+        var now = DateTime.UtcNow;
+        for (var i = 0; i < 9; i++)
+        {
+            var product = products[(i * 2) % products.Count];
+            var quantity = i % 3 == 0 ? 2 : 1;
+            var created = new DateTime(now.Year, now.Month, 1, 10, 0, 0, DateTimeKind.Utc)
+                .AddMonths(-i).AddDays(2 + i);
+            if (created > now) created = now.AddHours(-6);
+            var subtotal = Math.Round(product.EffectivePrice * quantity, 2);
+            var total = Math.Round(subtotal + 10, 2);
+            var order = new Order
+            {
+                OrderNumber = $"ORD-{created:yyyyMMdd}-{900100 + i}",
+                UserId = customer.Id,
+                CustomerName = customer.FullName,
+                CustomerEmail = customer.Email,
+                CustomerPhone = customer.Phone ?? "01700000000",
+                Items = new List<OrderItem>
+                {
+                    new()
+                    {
+                        ProductId = product.Id,
+                        ProductName = product.Name,
+                        Sku = product.Sku,
+                        ImageUrl = product.ThumbnailUrl,
+                        UnitPrice = product.EffectivePrice,
+                        UnitCost = product.CostPrice,
+                        Quantity = quantity,
+                        LineTotal = subtotal
+                    }
+                },
+                ShippingAddress = new AddressSnapshot
+                {
+                    FullName = customer.FullName,
+                    Phone = customer.Phone ?? "01700000000",
+                    Street = "House 12, Road 5, Mirpur",
+                    City = "Dhaka",
+                    State = "Dhaka",
+                    PostalCode = "1216",
+                    Country = "Bangladesh"
+                },
+                ShippingMethodName = "Standard Delivery",
+                ShippingCost = 10,
+                Subtotal = subtotal,
+                Total = total,
+                Status = OrderStatus.Completed,
+                PaymentMethod = PaymentProviders.Cod,
+                PaymentStatus = PaymentStatus.Paid,
+                InventoryCommitted = true,
+                CreatedAt = created,
+                ShippedAt = created.AddDays(1),
+                CompletedAt = created.AddDays(2)
+            };
+            order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Pending, Note = "Order placed", ChangedAt = created });
+            order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Confirmed, Note = "Payment confirmed", ChangedAt = created.AddMinutes(10) });
+            order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Shipped, Note = "Handed to carrier", ChangedAt = created.AddDays(1) });
+            order.StatusHistory.Add(new OrderStatusHistory { Status = OrderStatus.Completed, Note = "Delivered", ChangedAt = created.AddDays(2) });
+            orders.Add(order);
+            payments.Add(new Payment
+            {
+                OrderId = order.Id,
+                OrderNumber = order.OrderNumber,
+                UserId = customer.Id,
+                Provider = PaymentProviders.Cod,
+                Amount = total,
+                Currency = "USD",
+                Status = PaymentStatus.Paid,
+                TransactionId = $"SEED-TXN-{900100 + i}",
+                CreatedAt = created
+            });
+        }
+        await _database.GetCollection<Order>("Orders").InsertManyAsync(orders, cancellationToken: ct);
+        await _database.GetCollection<Payment>("Payments").InsertManyAsync(payments, cancellationToken: ct);
     }
 
     private async Task<Dictionary<string, Role>> SeedRolesAsync(CancellationToken ct)
@@ -156,6 +570,16 @@ public class DatabaseSeeder
             CodEnabled = true,
             StripeEnabled = false,
             SslCommerzEnabled = false,
+            BkashEnabled = true,
+            BkashMerchantNumber = "01700000000",
+            NagadEnabled = true,
+            NagadMerchantNumber = "01700000000",
+            RocketEnabled = true,
+            RocketMerchantNumber = "01700000000",
+            VoucherPointsEnabled = true,
+            VoucherPointValue = 1,
+            VoucherEarnPercent = 5,
+            VoucherMaxRedeemPercent = 100,
             SocialLinks = new Dictionary<string, string>
             {
                 ["instagram"] = "https://instagram.com",

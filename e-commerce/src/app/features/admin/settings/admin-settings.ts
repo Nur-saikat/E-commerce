@@ -10,6 +10,7 @@ import {
   WebsiteSettings
 } from '../../../core/models/api.models';
 import { AdminService } from '../../../core/services/admin.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmService } from '../../../core/services/confirm.service';
 import { ContentService } from '../../../core/services/content.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -140,6 +141,52 @@ interface PermissionGroup {
               </label>
             </div>
             <p class="text-xs text-ink-400">Provider secret keys are configured on the API through environment variables and are never exposed to the storefront.</p>
+          </section>
+
+          <section class="admin-card space-y-4">
+            <div>
+              <h3 class="text-sm font-semibold text-ink-900">Mobile banking & voucher points</h3>
+              <p class="text-xs text-ink-400">
+                Customers submit their transaction details for mobile banking payments and an admin verifies them before the order is confirmed.
+              </p>
+            </div>
+            <div class="grid gap-4 md:grid-cols-3">
+              <div class="space-y-2 rounded-xl border border-ink-100 p-3">
+                <label class="flex items-center gap-2 text-sm font-medium text-ink-700">
+                  <input type="checkbox" formControlName="bkashEnabled" class="accent-ink-900" /> bKash
+                </label>
+                <input formControlName="bkashMerchantNumber" class="input" placeholder="Merchant number 01XXXXXXXXX" />
+              </div>
+              <div class="space-y-2 rounded-xl border border-ink-100 p-3">
+                <label class="flex items-center gap-2 text-sm font-medium text-ink-700">
+                  <input type="checkbox" formControlName="nagadEnabled" class="accent-ink-900" /> Nagad
+                </label>
+                <input formControlName="nagadMerchantNumber" class="input" placeholder="Merchant number 01XXXXXXXXX" />
+              </div>
+              <div class="space-y-2 rounded-xl border border-ink-100 p-3">
+                <label class="flex items-center gap-2 text-sm font-medium text-ink-700">
+                  <input type="checkbox" formControlName="rocketEnabled" class="accent-ink-900" /> Rocket
+                </label>
+                <input formControlName="rocketMerchantNumber" class="input" placeholder="Merchant number 01XXXXXXXXX" />
+              </div>
+            </div>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <label class="flex items-center gap-2 text-sm text-ink-700 lg:mt-6">
+                <input type="checkbox" formControlName="voucherPointsEnabled" class="accent-ink-900" /> Voucher points
+              </label>
+              <div>
+                <label class="label" for="pointValue">Point value ({{ storeForm.controls.currencySymbol.value }})</label>
+                <input id="pointValue" type="number" min="0.01" step="0.01" formControlName="voucherPointValue" class="input" />
+              </div>
+              <div>
+                <label class="label" for="earnPercent">Points earned (% of spend)</label>
+                <input id="earnPercent" type="number" min="0" max="100" step="0.5" formControlName="voucherEarnPercent" class="input" />
+              </div>
+              <div>
+                <label class="label" for="maxRedeem">Max redeem (% of order)</label>
+                <input id="maxRedeem" type="number" min="0" max="100" step="1" formControlName="voucherMaxRedeemPercent" class="input" />
+              </div>
+            </div>
           </section>
 
           <section class="admin-card space-y-4">
@@ -312,12 +359,14 @@ interface PermissionGroup {
                   <p class="text-xs text-ink-400">
                     @if (isSuperAdmin(role)) {
                       Super admin always has full access and cannot be edited.
+                    } @else if (isCustomerRole(role)) {
+                      Customer permissions are fixed at the default set and cannot be edited.
                     } @else {
                       {{ selectedPermissions().length }} permission(s) selected
                     }
                   </p>
                 </div>
-                @if (!isSuperAdmin(role)) {
+                @if (!isReadOnlyRole(role)) {
                   <button type="button" class="btn-primary btn-sm" [disabled]="saving()" (click)="savePermissions()">
                     <app-icon name="save" [size]="14" /> {{ saving() ? 'Saving…' : 'Save permissions' }}
                   </button>
@@ -325,6 +374,11 @@ interface PermissionGroup {
               </div>
 
               <div class="mt-5 space-y-5">
+                @if (!isSuperAdminUser()) {
+                  <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-800">
+                    You can only view and grant permissions you hold yourself. Permissions outside your own set are hidden here and preserved for other administrators.
+                  </p>
+                }
                 @for (group of permissionGroups(); track group.group) {
                   <div>
                     <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-400">{{ group.group }}</p>
@@ -332,13 +386,13 @@ interface PermissionGroup {
                       @for (permission of group.items; track permission.key) {
                         <label
                           class="flex cursor-pointer items-start gap-2 rounded-xl border border-ink-100 px-3 py-2.5 transition hover:border-gold-300"
-                          [class.opacity-50]="isSuperAdmin(role)"
+                          [class.opacity-50]="isReadOnlyRole(role)"
                         >
                           <input
                             type="checkbox"
                             class="mt-0.5 accent-ink-900"
                             [checked]="isSuperAdmin(role) || selectedPermissions().includes(permission.key)"
-                            [disabled]="isSuperAdmin(role)"
+                            [disabled]="isReadOnlyRole(role)"
                             (change)="togglePermission(permission.key, $event)"
                           />
                           <span>
@@ -366,6 +420,7 @@ export class AdminSettings implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
 
   readonly tabs: { value: SettingsTab; label: string }[] = [
     { value: 'store', label: 'Store' },
@@ -419,6 +474,16 @@ export class AdminSettings implements OnInit {
     codEnabled: [true],
     stripeEnabled: [false],
     sslCommerzEnabled: [false],
+    bkashEnabled: [false],
+    bkashMerchantNumber: [''],
+    nagadEnabled: [false],
+    nagadMerchantNumber: [''],
+    rocketEnabled: [false],
+    rocketMerchantNumber: [''],
+    voucherPointsEnabled: [true],
+    voucherPointValue: [1],
+    voucherEarnPercent: [5],
+    voucherMaxRedeemPercent: [100],
     footerAbout: [''],
     copyrightText: ['']
   });
@@ -543,6 +608,16 @@ export class AdminSettings implements OnInit {
       codEnabled: value.codEnabled,
       stripeEnabled: value.stripeEnabled,
       sslCommerzEnabled: value.sslCommerzEnabled,
+      bkashEnabled: value.bkashEnabled,
+      bkashMerchantNumber: value.bkashMerchantNumber.trim() || null,
+      nagadEnabled: value.nagadEnabled,
+      nagadMerchantNumber: value.nagadMerchantNumber.trim() || null,
+      rocketEnabled: value.rocketEnabled,
+      rocketMerchantNumber: value.rocketMerchantNumber.trim() || null,
+      voucherPointsEnabled: value.voucherPointsEnabled,
+      voucherPointValue: Number(value.voucherPointValue) || 1,
+      voucherEarnPercent: Number(value.voucherEarnPercent) || 0,
+      voucherMaxRedeemPercent: Number(value.voucherMaxRedeemPercent) || 0,
       socialLinks,
       footerAbout: value.footerAbout.trim() || null,
       copyrightText: value.copyrightText.trim() || null,
@@ -661,7 +736,21 @@ export class AdminSettings implements OnInit {
     return role.name === 'SuperAdmin';
   }
 
+  isCustomerRole(role: Role): boolean {
+    return role.name === 'Customer';
+  }
+
+  isReadOnlyRole(role: Role): boolean {
+    return this.isSuperAdmin(role) || this.isCustomerRole(role);
+  }
+
+  isSuperAdminUser(): boolean {
+    return this.auth.user()?.role === 'SuperAdmin';
+  }
+
   togglePermission(key: string, event: Event): void {
+    const role = this.selectedRole();
+    if (role && this.isReadOnlyRole(role)) return;
     const checked = (event.target as HTMLInputElement).checked;
     this.selectedPermissions.update((list) =>
       checked ? (list.includes(key) ? list : [...list, key]) : list.filter((item) => item !== key)
@@ -670,7 +759,7 @@ export class AdminSettings implements OnInit {
 
   savePermissions(): void {
     const role = this.selectedRole();
-    if (!role || this.isSuperAdmin(role)) return;
+    if (!role || this.isReadOnlyRole(role)) return;
     this.saving.set(true);
     this.admin.updateRolePermissions(role.name, this.selectedPermissions()).subscribe({
       next: (updated) => {
@@ -703,6 +792,16 @@ export class AdminSettings implements OnInit {
       codEnabled: settings.codEnabled,
       stripeEnabled: settings.stripeEnabled,
       sslCommerzEnabled: settings.sslCommerzEnabled,
+      bkashEnabled: settings.bkashEnabled,
+      bkashMerchantNumber: settings.bkashMerchantNumber ?? '',
+      nagadEnabled: settings.nagadEnabled,
+      nagadMerchantNumber: settings.nagadMerchantNumber ?? '',
+      rocketEnabled: settings.rocketEnabled,
+      rocketMerchantNumber: settings.rocketMerchantNumber ?? '',
+      voucherPointsEnabled: settings.voucherPointsEnabled,
+      voucherPointValue: settings.voucherPointValue,
+      voucherEarnPercent: settings.voucherEarnPercent,
+      voucherMaxRedeemPercent: settings.voucherMaxRedeemPercent,
       footerAbout: settings.footerAbout ?? '',
       copyrightText: settings.copyrightText ?? ''
     });

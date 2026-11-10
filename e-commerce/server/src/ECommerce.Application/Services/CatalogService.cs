@@ -121,7 +121,7 @@ public class CatalogService
         return new PagedResult<ProductSummaryDto>(items, total, query.Page, query.PageSize);
     }
 
-    public async Task<ProductDetailDto> GetProductAsync(string idOrSlug, bool includeInactive = false, CancellationToken ct = default)
+    public async Task<ProductDetailDto> GetProductAsync(string idOrSlug, bool includeInactive = false, CancellationToken ct = default, bool includeCost = false)
     {
         Product? product;
         if (ObjectId.TryParse(idOrSlug, out var objectId))
@@ -137,6 +137,7 @@ public class CatalogService
             Builders<Product>.Update.Inc(p => p.ViewCount, 1), ct);
 
         var dto = await MapDetailAsync(product, ct);
+        if (includeCost) dto.CostPrice = product.CostPrice;
         var related = await _uow.Products.Collection
             .Find(Builders<Product>.Filter.And(
                 Builders<Product>.Filter.Eq(p => p.IsDeleted, false),
@@ -506,6 +507,7 @@ public class CatalogService
             CategoryId = category.Id,
             BrandId = brandId,
             Price = request.Price,
+            CostPrice = request.CostPrice,
             DiscountPrice = request.DiscountPrice,
             Stock = request.Stock,
             LowStockThreshold = request.LowStockThreshold,
@@ -575,6 +577,7 @@ public class CatalogService
         product.CategoryId = category.Id;
         product.BrandId = brandId;
         product.Price = request.Price;
+        product.CostPrice = request.CostPrice;
         product.DiscountPrice = request.DiscountPrice;
         product.Stock = request.Stock;
         product.LowStockThreshold = request.LowStockThreshold;

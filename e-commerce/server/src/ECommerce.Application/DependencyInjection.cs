@@ -16,13 +16,16 @@ public static class DependencyInjection
         services.AddScoped<CouponService>();
         services.AddScoped<CartService>();
         services.AddScoped<WishlistService>();
+        services.AddScoped<VoucherService>();
         services.AddScoped<OrderService>();
+        services.AddScoped<ReturnService>();
         services.AddScoped<PaymentService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AccountService>();
         services.AddScoped<ContentService>();
         services.AddScoped<HomeService>();
         services.AddScoped<AdminService>();
+        services.AddScoped<BusinessService>();
         return services;
     }
 }

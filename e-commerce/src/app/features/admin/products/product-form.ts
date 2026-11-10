@@ -114,11 +114,15 @@ interface VariantRow {
               <h3 class="text-sm font-semibold text-ink-900">Pricing & inventory</h3>
               <p class="text-xs text-ink-400">Prices are in your store currency. Stock is tracked per product and per variant.</p>
             </div>
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <div>
                 <label class="label" for="price">Price *</label>
                 <input id="price" type="number" min="0" step="0.01" formControlName="price" class="input" />
                 @if (invalid('price')) { <p class="mt-1 text-xs text-danger">Enter a price above zero.</p> }
+              </div>
+              <div>
+                <label class="label" for="costPrice">Cost price</label>
+                <input id="costPrice" type="number" min="0" step="0.01" formControlName="costPrice" class="input" />
               </div>
               <div>
                 <label class="label" for="discount">Discount price</label>
@@ -133,6 +137,7 @@ interface VariantRow {
                 <input id="threshold" type="number" min="0" step="1" formControlName="lowStockThreshold" class="input" />
               </div>
             </div>
+            <p class="text-xs text-ink-400">Cost price is used to calculate profit and inventory value. It is never shown to customers.</p>
             <div class="flex flex-wrap gap-5 pt-1">
               <label class="flex items-center gap-2 text-sm text-ink-700">
                 <input type="checkbox" formControlName="isActive" class="accent-ink-900" /> Published
@@ -305,6 +310,7 @@ export class ProductForm implements OnInit {
     shortDescription: [''],
     description: ['', [Validators.required, Validators.maxLength(10000)]],
     price: [0, [Validators.required, Validators.min(0.01)]],
+    costPrice: [0, [Validators.required, Validators.min(0)]],
     discountPrice: this.fb.control<number | null>(null),
     stock: [0, [Validators.required, Validators.min(0)]],
     lowStockThreshold: [5, [Validators.required, Validators.min(0)]],
@@ -334,7 +340,7 @@ export class ProductForm implements OnInit {
       return;
     }
     this.isEdit.set(true);
-    this.catalog.product(this.productId, true).subscribe({
+    this.catalog.product(this.productId, true, true).subscribe({
       next: (detail) => {
         this.patch(detail);
         this.loading.set(false);
@@ -462,6 +468,7 @@ export class ProductForm implements OnInit {
       categoryId: value.categoryId,
       brandId: value.brandId || null,
       price: value.price,
+      costPrice: value.costPrice,
       discountPrice: discount,
       stock: value.stock,
       lowStockThreshold: value.lowStockThreshold,
@@ -515,6 +522,7 @@ export class ProductForm implements OnInit {
       shortDescription: detail.shortDescription ?? '',
       description: detail.description,
       price: detail.price,
+      costPrice: detail.costPrice ?? 0,
       discountPrice: detail.discountPrice ?? null,
       stock: detail.stock,
       lowStockThreshold: detail.lowStockThreshold,

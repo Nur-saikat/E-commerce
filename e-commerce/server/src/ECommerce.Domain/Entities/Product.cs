@@ -13,6 +13,7 @@ public class Product : BaseEntity
     public ObjectId CategoryId { get; set; }
     public ObjectId? BrandId { get; set; }
     public decimal Price { get; set; }
+    public decimal CostPrice { get; set; }
     public decimal? DiscountPrice { get; set; }
     public decimal EffectivePrice => DiscountPrice.HasValue && DiscountPrice.Value > 0 && DiscountPrice.Value < Price
         ? DiscountPrice.Value

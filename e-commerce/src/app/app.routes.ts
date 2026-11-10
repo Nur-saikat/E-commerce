@@ -162,6 +162,49 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/dashboard/admin-dashboard').then((m) => m.AdminDashboard)
       },
       {
+        path: 'business',
+        pathMatch: 'full',
+        title: 'Business overview — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/business-overview').then((m) => m.BusinessOverviewPage)
+      },
+      {
+        path: 'business/profit-loss',
+        title: 'Profit & loss — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-profit-loss').then((m) => m.AdminProfitLoss)
+      },
+      {
+        path: 'business/investments',
+        title: 'Investments — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-investments').then((m) => m.AdminInvestments)
+      },
+      {
+        path: 'business/expenses',
+        title: 'Expenses — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-expenses').then((m) => m.AdminExpenses)
+      },
+      {
+        path: 'business/arrivals',
+        title: 'Arrivals — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-arrivals').then((m) => m.AdminArrivals)
+      },
+      {
+        path: 'business/staff',
+        title: 'Staff & CVs — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-staff').then((m) => m.AdminStaff)
+      },
+      {
+        path: 'business/owner',
+        title: 'Owner profile — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-owner-profile').then((m) => m.AdminOwnerProfile)
+      },
+      {
         path: 'products',
         title: 'Products — Safwan Admin',
         canActivate: [permissionGuard('products.view')],
@@ -208,6 +251,12 @@ export const routes: Routes = [
         title: 'Order details — Safwan Admin',
         canActivate: [permissionGuard('orders.view')],
         loadComponent: () => import('./features/admin/orders/admin-order-detail').then((m) => m.AdminOrderDetail)
+      },
+      {
+        path: 'returns',
+        title: 'Returns — Safwan Admin',
+        canActivate: [permissionGuard('orders.view')],
+        loadComponent: () => import('./features/admin/returns/admin-returns').then((m) => m.AdminReturns)
       },
       {
         path: 'customers',

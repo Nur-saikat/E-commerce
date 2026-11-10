@@ -9,3 +9,4 @@ F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\E
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\refint\ECommerce.Shared.dll
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.pdb
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ref\ECommerce.Shared.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Shared\obj\Debug\net10.0\ECommerce.Shared.sourcelink.json

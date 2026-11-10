@@ -127,6 +127,32 @@ public class MongoIndexInitializer
             Model<AuditLog>(Builders<AuditLog>.IndexKeys.Descending(a => a.CreatedAt))
         }, ct);
 
+        await CreateAsync<VoucherWallet>("VoucherWallets", new[]
+        {
+            Model<VoucherWallet>(Builders<VoucherWallet>.IndexKeys.Ascending(w => w.UserId), unique: true)
+        }, ct);
+
+        await CreateAsync<VoucherTransaction>("VoucherTransactions", new[]
+        {
+            Model<VoucherTransaction>(Builders<VoucherTransaction>.IndexKeys.Combine(
+                Builders<VoucherTransaction>.IndexKeys.Ascending(t => t.UserId),
+                Builders<VoucherTransaction>.IndexKeys.Descending(t => t.CreatedAt))),
+            Model<VoucherTransaction>(Builders<VoucherTransaction>.IndexKeys.Ascending(t => t.OrderId))
+        }, ct);
+
+        await CreateAsync<ReturnRequest>("ReturnRequests", new[]
+        {
+            Model<ReturnRequest>(Builders<ReturnRequest>.IndexKeys.Combine(
+                Builders<ReturnRequest>.IndexKeys.Ascending(r => r.OrderId),
+                Builders<ReturnRequest>.IndexKeys.Descending(r => r.CreatedAt))),
+            Model<ReturnRequest>(Builders<ReturnRequest>.IndexKeys.Combine(
+                Builders<ReturnRequest>.IndexKeys.Ascending(r => r.UserId),
+                Builders<ReturnRequest>.IndexKeys.Descending(r => r.CreatedAt))),
+            Model<ReturnRequest>(Builders<ReturnRequest>.IndexKeys.Combine(
+                Builders<ReturnRequest>.IndexKeys.Ascending(r => r.Status),
+                Builders<ReturnRequest>.IndexKeys.Descending(r => r.CreatedAt)))
+        }, ct);
+
         _logger.LogInformation("MongoDB indexes initialized");
     }
 

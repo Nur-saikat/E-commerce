@@ -5,6 +5,7 @@ import { OrderService } from '../../core/services/order.service';
 import { WishlistService } from '../../core/services/wishlist.service';
 import { AccountService } from '../../core/services/account.service';
 import { AuthService } from '../../core/services/auth.service';
+import { VoucherService } from '../../core/services/voucher.service';
 import { OrderSummary } from '../../core/models/api.models';
 import { Icon } from '../../shared/components/icon/icon';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
@@ -118,6 +119,38 @@ import { orderStatusClass, paymentStatusClass } from '../../shared/utils/status'
           </section>
 
           <section class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-ink-900">Voucher points</h2>
+              <span class="flex h-8 w-8 items-center justify-center rounded-full bg-gold-50 text-gold-600"><app-icon name="gift" [size]="16" /></span>
+            </div>
+            @if (wallet(); as points) {
+              <div class="mt-3 flex items-end justify-between">
+                <div>
+                  <p class="text-3xl font-semibold text-ink-900">{{ points.balance }}</p>
+                  <p class="text-xs text-ink-500">points worth {{ points.balance * points.pointValue | money }}</p>
+                </div>
+                <p class="text-[11px] text-ink-400">Earn {{ points.earnPercent }}% back</p>
+              </div>
+              @if (points.transactions.length) {
+                <ul class="mt-3 space-y-2 border-t border-ink-100 pt-3">
+                  @for (entry of points.transactions.slice(0, 4); track entry.id) {
+                    <li class="flex items-center justify-between gap-3 text-xs">
+                      <span class="min-w-0 flex-1 truncate text-ink-600">{{ entry.note || entry.type }}</span>
+                      <span class="font-semibold" [class]="entry.points > 0 ? 'text-emerald-700' : 'text-ink-700'">
+                        {{ entry.points > 0 ? '+' : '' }}{{ entry.points }}
+                      </span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="mt-3 text-xs text-ink-500">Complete an order to start earning points.</p>
+              }
+            } @else {
+              <p class="mt-3 text-xs text-ink-500">Voucher points are unavailable right now.</p>
+            }
+          </section>
+
+          <section class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6">
             <h2 class="text-lg font-semibold text-ink-900">Quick links</h2>
             <div class="mt-3 grid grid-cols-2 gap-2">
               <a routerLink="/account/profile" class="flex flex-col gap-2 rounded-xl border border-ink-100 p-3 text-xs font-medium text-ink-700 transition hover:border-ink-900">
@@ -144,7 +177,9 @@ export class AccountOverview implements OnInit {
   readonly wishlist = inject(WishlistService);
   private readonly ordersService = inject(OrderService);
   private readonly account = inject(AccountService);
+  private readonly vouchers = inject(VoucherService);
 
+  readonly wallet = this.vouchers.wallet;
   readonly orders = signal<OrderSummary[]>([]);
   readonly orderTotal = signal(0);
   readonly loadingOrders = signal(true);
@@ -161,6 +196,7 @@ export class AccountOverview implements OnInit {
     });
     this.account.getAddresses().subscribe({ error: () => undefined });
     this.wishlist.get().subscribe({ error: () => undefined });
+    if (!this.wallet()) this.vouchers.loadWallet().subscribe({ error: () => undefined });
   }
 
   memberSince(): string {

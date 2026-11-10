@@ -79,10 +79,12 @@ public class ProductsController : ApiControllerBase
 
     [HttpGet("{idOrSlug}")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetById(string idOrSlug, [FromQuery] bool includeInactive, CancellationToken ct)
+    public async Task<IActionResult> GetById(string idOrSlug, [FromQuery] bool includeInactive,
+        [FromQuery] bool includeCost, CancellationToken ct)
     {
         var canSeeInactive = includeInactive && _currentUser.HasPermission(Permissions.ProductsManage);
-        return Success(await _catalog.GetProductAsync(idOrSlug, canSeeInactive, ct));
+        var canSeeCost = includeCost && _currentUser.HasPermission(Permissions.ProductsManage);
+        return Success(await _catalog.GetProductAsync(idOrSlug, canSeeInactive, ct, canSeeCost));
     }
 
     [HttpPost]

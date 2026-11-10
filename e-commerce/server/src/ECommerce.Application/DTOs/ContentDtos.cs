@@ -122,6 +122,16 @@ public class SettingsDto
     public bool CodEnabled { get; set; }
     public bool StripeEnabled { get; set; }
     public bool SslCommerzEnabled { get; set; }
+    public bool BkashEnabled { get; set; }
+    public string? BkashMerchantNumber { get; set; }
+    public bool NagadEnabled { get; set; }
+    public string? NagadMerchantNumber { get; set; }
+    public bool RocketEnabled { get; set; }
+    public string? RocketMerchantNumber { get; set; }
+    public bool VoucherPointsEnabled { get; set; }
+    public decimal VoucherPointValue { get; set; }
+    public decimal VoucherEarnPercent { get; set; }
+    public decimal VoucherMaxRedeemPercent { get; set; }
     public Dictionary<string, string> SocialLinks { get; set; } = new();
     public string? FooterAbout { get; set; }
     public string? CopyrightText { get; set; }
@@ -144,6 +154,16 @@ public class SettingsRequest
     public bool CodEnabled { get; set; }
     public bool StripeEnabled { get; set; }
     public bool SslCommerzEnabled { get; set; }
+    public bool BkashEnabled { get; set; }
+    public string? BkashMerchantNumber { get; set; }
+    public bool NagadEnabled { get; set; }
+    public string? NagadMerchantNumber { get; set; }
+    public bool RocketEnabled { get; set; }
+    public string? RocketMerchantNumber { get; set; }
+    public bool VoucherPointsEnabled { get; set; }
+    public decimal VoucherPointValue { get; set; } = 1;
+    public decimal VoucherEarnPercent { get; set; }
+    public decimal VoucherMaxRedeemPercent { get; set; } = 100;
     public Dictionary<string, string> SocialLinks { get; set; } = new();
     public string? FooterAbout { get; set; }
     public string? CopyrightText { get; set; }

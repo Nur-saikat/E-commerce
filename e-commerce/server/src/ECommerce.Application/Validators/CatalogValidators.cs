@@ -12,6 +12,7 @@ public class ProductRequestValidator : AbstractValidator<ProductRequest>
         RuleFor(x => x.Description).NotEmpty().MaximumLength(10000);
         RuleFor(x => x.CategoryId).NotEmpty();
         RuleFor(x => x.Price).GreaterThan(0);
+        RuleFor(x => x.CostPrice).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Stock).GreaterThanOrEqualTo(0);
         RuleFor(x => x.DiscountPrice)
             .GreaterThan(0).When(x => x.DiscountPrice.HasValue)

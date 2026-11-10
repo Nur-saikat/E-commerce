@@ -15,3 +15,4 @@ F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net1
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\refint\ECommerce.Application.dll
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.pdb
 F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ref\ECommerce.Application.dll
+F:\Angular\E-commerce\e-commerce\server\src\ECommerce.Application\obj\Debug\net10.0\ECommerce.Application.sourcelink.json

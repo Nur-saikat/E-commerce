@@ -18,6 +18,7 @@ public interface ITokenService
 public interface IFileStorage
 {
     Task<string> SaveAsync(Stream stream, string fileName, string contentType, CancellationToken ct = default);
+    Task<string> SaveDocumentAsync(Stream stream, string fileName, string contentType, long maxBytes, CancellationToken ct = default);
     Task DeleteAsync(string url);
 }
 

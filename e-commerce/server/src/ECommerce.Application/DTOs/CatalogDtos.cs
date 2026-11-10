@@ -101,6 +101,7 @@ public class ProductSummaryDto
 
 public class ProductDetailDto : ProductSummaryDto
 {
+    public decimal CostPrice { get; set; }
     public string? ShortDescription { get; set; }
     public string Description { get; set; } = string.Empty;
     public List<string> Images { get; set; } = new();
@@ -122,6 +123,7 @@ public class ProductRequest
     public string CategoryId { get; set; } = string.Empty;
     public string? BrandId { get; set; }
     public decimal Price { get; set; }
+    public decimal CostPrice { get; set; }
     public decimal? DiscountPrice { get; set; }
     public int Stock { get; set; }
     public int LowStockThreshold { get; set; } = 5;

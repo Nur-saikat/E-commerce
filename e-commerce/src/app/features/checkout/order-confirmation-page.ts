@@ -1,10 +1,13 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { OrderService } from '../../core/services/order.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ContentService } from '../../core/services/content.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Order } from '../../core/models/api.models';
+import { CheckoutConfig, Order } from '../../core/models/api.models';
 import { Icon } from '../../shared/components/icon/icon';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
 import { Spinner } from '../../shared/components/spinner/spinner';
@@ -15,7 +18,7 @@ import { orderStatusClass, paymentMethodLabel, paymentStatusClass } from '../../
 @Component({
   selector: 'app-order-confirmation-page',
   standalone: true,
-  imports: [DatePipe, RouterLink, Icon, EmptyState, Spinner, AssetUrlPipe, MoneyPipe],
+  imports: [DatePipe, ReactiveFormsModule, RouterLink, Icon, EmptyState, Spinner, AssetUrlPipe, MoneyPipe],
   template: `
     <div class="container-luxe py-10 lg:py-14">
       @if (loading()) {
@@ -69,7 +72,59 @@ import { orderStatusClass, paymentMethodLabel, paymentStatusClass } from '../../
             </div>
 
             <div class="space-y-6 p-6 sm:p-8">
-              @if (item.paymentMethod !== 'COD' && item.paymentStatus !== 'Paid' && item.status !== 'Cancelled') {
+              @if (isMobileUnpaid(item)) {
+                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                  <div class="flex items-start gap-3">
+                    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+                      <app-icon name="phone" [size]="17" />
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <h2 class="text-sm font-semibold text-amber-900">Complete your {{ item.paymentMethod }} payment</h2>
+                      <p class="mt-1 text-xs leading-relaxed text-amber-900/80">
+                        Send <strong>{{ item.total | money }}</strong> to our {{ item.paymentMethod }} merchant number
+                        @if (merchantNumber()) {
+                          <strong class="select-all font-mono">{{ merchantNumber() }}</strong>
+                        } @else {
+                          shown at checkout
+                        }
+                        and use <strong>{{ item.orderNumber }}</strong> as the reference.
+                      </p>
+
+                      @if (mobileSubmitted()) {
+                        <p class="mt-3 rounded-lg bg-white/70 p-3 text-xs text-amber-900">
+                          Transaction submitted. Our team will verify it shortly, and your order will be confirmed as soon as the payment is matched.
+                        </p>
+                      } @else {
+                        <div class="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                          <input
+                            type="tel"
+                            class="input !py-2 text-xs"
+                            placeholder="Your {{ item.paymentMethod }} number"
+                            [formControl]="senderControl"
+                          />
+                          <input
+                            type="text"
+                            class="input !py-2 text-xs"
+                            placeholder="Transaction ID"
+                            [formControl]="trxControl"
+                          />
+                          <button
+                            type="button"
+                            class="btn-primary btn-sm justify-center"
+                            [disabled]="submittingMobile() || senderControl.invalid || trxControl.invalid"
+                            (click)="submitMobile(item)"
+                          >
+                            {{ submittingMobile() ? 'Submitting…' : 'Submit payment' }}
+                          </button>
+                        </div>
+                        <p class="mt-1.5 text-[10px] text-amber-900/60">
+                          Use the sender number and transaction ID from your {{ item.paymentMethod }} receipt.
+                        </p>
+                      }
+                    </div>
+                  </div>
+                </div>
+              } @else if (item.paymentMethod !== 'COD' && item.paymentMethod !== 'Voucher' && item.paymentStatus !== 'Paid' && item.status !== 'Cancelled') {
                 <div class="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <p class="text-sm text-amber-900">
                     Your payment is not complete yet. Finish payment to confirm this order.
@@ -148,7 +203,15 @@ import { orderStatusClass, paymentMethodLabel, paymentStatusClass } from '../../
                 }
                 <div class="flex justify-between"><dt class="text-ink-500">Shipping</dt><dd>{{ item.shippingCost > 0 ? (item.shippingCost | money) : 'Free' }}</dd></div>
                 <div class="flex justify-between"><dt class="text-ink-500">Tax</dt><dd>{{ item.taxAmount | money }}</dd></div>
+                @if (item.pointsDiscount > 0) {
+                  <div class="flex justify-between text-success"><dt>Voucher points ({{ item.pointsRedeemed }})</dt><dd>−{{ item.pointsDiscount | money }}</dd></div>
+                }
                 <div class="flex justify-between border-t border-ink-200 pt-2 text-base font-semibold"><dt>Total</dt><dd>{{ item.total | money }}</dd></div>
+                @if (item.pointsEarned > 0) {
+                  <p class="flex items-center gap-1.5 pt-1 text-xs text-gold-700">
+                    <app-icon name="gift" [size]="13" /> You earned {{ item.pointsEarned }} voucher points on this order.
+                  </p>
+                }
               </dl>
 
               @if (item.statusHistory.length) {
@@ -193,6 +256,7 @@ import { orderStatusClass, paymentMethodLabel, paymentStatusClass } from '../../
 export class OrderConfirmationPage implements OnInit {
   readonly auth = inject(AuthService);
   private readonly orders = inject(OrderService);
+  private readonly content = inject(ContentService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
@@ -201,6 +265,21 @@ export class OrderConfirmationPage implements OnInit {
   readonly order = signal<Order | null>(null);
   readonly verifyMessage = signal<string | null>(null);
   readonly paying = signal(false);
+  readonly submittingMobile = signal(false);
+  readonly mobileSubmitted = signal(false);
+  readonly config = signal<CheckoutConfig | null>(null);
+  readonly senderControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(/^01[3-9]\d{8}$/)]
+  });
+  readonly trxControl = new FormControl('', {
+    nonNullable: true,
+    validators: [Validators.required, Validators.pattern(/^[A-Za-z0-9]{6,40}$/)]
+  });
+  readonly merchantNumber = computed(() => {
+    const provider = this.order()?.paymentMethod;
+    return this.config()?.mobileBanking?.find((option) => option.provider === provider)?.accountNumber ?? '';
+  });
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -208,6 +287,11 @@ export class OrderConfirmationPage implements OnInit {
       this.loading.set(false);
       return;
     }
+
+    this.content.checkoutConfig().subscribe({
+      next: (config) => this.config.set(config),
+      error: () => undefined
+    });
 
     const stored = this.readStoredOrder(id);
     const verify = this.route.snapshot.queryParamMap.get('verify') === '1';
@@ -245,6 +329,47 @@ export class OrderConfirmationPage implements OnInit {
 
   methodLabel(method: string): string {
     return paymentMethodLabel(method);
+  }
+
+  isMobileUnpaid(order: Order): boolean {
+    return (
+      ['bKash', 'Nagad', 'Rocket'].includes(order.paymentMethod) &&
+      order.paymentStatus !== 'Paid' &&
+      order.paymentMethod !== 'Voucher' &&
+      order.status !== 'Cancelled'
+    );
+  }
+
+  async submitMobile(order: Order): Promise<void> {
+    if (this.submittingMobile()) return;
+    if (this.senderControl.invalid || this.trxControl.invalid) {
+      this.senderControl.markAsTouched();
+      this.trxControl.markAsTouched();
+      this.toast.error('Enter a valid mobile number and the transaction ID from your receipt');
+      return;
+    }
+
+    this.submittingMobile.set(true);
+    try {
+      await firstValueFrom(
+        this.orders.submitMobilePayment({
+          orderId: order.id,
+          provider: order.paymentMethod,
+          senderNumber: this.senderControl.value,
+          transactionId: this.trxControl.value,
+          guestEmail: this.auth.isAuthenticated() ? null : order.customerEmail
+        })
+      );
+      this.mobileSubmitted.set(true);
+      this.toast.success('Transaction submitted. We will verify it shortly.');
+      if (this.auth.isAuthenticated()) {
+        this.orders.get(order.id).subscribe({ next: (fresh) => this.order.set(fresh), error: () => undefined });
+      }
+    } catch {
+      // Error toast is handled centrally.
+    } finally {
+      this.submittingMobile.set(false);
+    }
   }
 
   downloadInvoice(order: Order): void {

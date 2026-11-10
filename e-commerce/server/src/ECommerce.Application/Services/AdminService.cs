@@ -329,6 +329,7 @@ public class AdminService
             Stock = p.Stock,
             LowStockThreshold = p.LowStockThreshold,
             TotalStock = p.TotalStock,
+            CostPrice = p.CostPrice,
             Status = p.TotalStock <= 0 ? "OutOfStock" : p.TotalStock <= p.LowStockThreshold ? "LowStock" : "InStock",
             Variants = p.Variants.Select(v => new InventoryVariantDto
             {
@@ -398,6 +399,7 @@ public class AdminService
             Stock = updated.Stock,
             LowStockThreshold = updated.LowStockThreshold,
             TotalStock = updated.TotalStock,
+            CostPrice = updated.CostPrice,
             Status = updated.TotalStock <= 0 ? "OutOfStock" : updated.TotalStock <= updated.LowStockThreshold ? "LowStock" : "InStock",
             Variants = updated.Variants.Select(v => new InventoryVariantDto
             {
@@ -452,18 +454,20 @@ public class AdminService
     public async Task<List<RoleDto>> GetRolesAsync(CancellationToken ct = default)
     {
         var roles = await _uow.Roles.FindAsync(r => !r.IsDeleted, ct);
+        var visible = DelegablePermissions();
         return roles.OrderBy(r => r.Name).Select(r => new RoleDto
         {
             Id = r.Id.ToString(),
             Name = r.Name,
             Description = r.Description,
-            Permissions = r.Permissions,
+            Permissions = r.Permissions.Where(p => visible.Contains(p)).ToList(),
             IsSystem = r.IsSystem
         }).ToList();
     }
 
     public async Task<List<PermissionDto>> GetPermissionsAsync(CancellationToken ct = default)
     {
+        var visible = DelegablePermissions();
         var permissions = await _uow.Permissions.FindAsync(p => !p.IsDeleted, ct);
         if (permissions.Count == 0)
         {
@@ -473,7 +477,7 @@ public class AdminService
                 Name = p.Split('.')[1],
                 Group = p.Split('.')[0],
                 Description = $"Allows {p.Split('.')[1]} access for {p.Split('.')[0]}"
-            }).ToList();
+            }).Where(p => visible.Contains(p.Key)).ToList();
         }
         return permissions.Select(p => new PermissionDto
         {
@@ -481,21 +485,44 @@ public class AdminService
             Name = p.Name,
             Group = p.Group,
             Description = p.Description
-        }).ToList();
+        }).Where(p => visible.Contains(p.Key)).ToList();
     }
 
     public async Task<RoleDto> UpdateRolePermissionsAsync(string roleName, List<string> permissions, CancellationToken ct = default)
     {
-        if (_currentUser.Role != AppRoles.SuperAdmin && _currentUser.Role != AppRoles.Admin)
-            throw new ForbiddenException("Only administrators can change role permissions");
-
         var role = await _uow.Roles.FirstOrDefaultAsync(r => r.Name == roleName && !r.IsDeleted, ct)
             ?? throw new NotFoundException("Role not found");
         if (role.Name == AppRoles.SuperAdmin)
             throw new ForbiddenException("Super admin permissions cannot be modified");
 
-        var valid = permissions.Where(p => Permissions.All.Contains(p)).Distinct().ToList();
-        role.Permissions = valid;
+        // Customer permissions deliberately stay at their defaults; storefront access is
+        // authenticated separately and granting admin permissions here would escalate customers.
+        if (role.Name == AppRoles.Customer)
+            throw new ForbiddenException("Customer permissions are fixed at the default set");
+
+        var visible = DelegablePermissions();
+        var requested = (permissions ?? new List<string>())
+            .Select(p => Permissions.All.FirstOrDefault(known => string.Equals(known, p, StringComparison.OrdinalIgnoreCase)))
+            .Where(p => p is not null)
+            .Select(p => p!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (_currentUser.Role != AppRoles.SuperAdmin)
+        {
+            var escalated = requested.Where(p => !visible.Contains(p)).ToList();
+            if (escalated.Count > 0)
+                throw new ForbiddenException(
+                    $"You can only grant permissions you hold yourself: {string.Join(", ", escalated)}");
+        }
+
+        // Permissions the actor cannot see are preserved, so a limited admin can neither grant
+        // nor strip access beyond their own permission set.
+        var preserved = role.Permissions.Where(p => !visible.Contains(p)).ToList();
+        role.Permissions = preserved
+            .Concat(requested)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
         role.UpdatedAt = DateTime.UtcNow;
         role.UpdatedBy = _currentUser.UserId;
         await _uow.Roles.UpdateAsync(role, ct);
@@ -505,10 +532,15 @@ public class AdminService
             Id = role.Id.ToString(),
             Name = role.Name,
             Description = role.Description,
-            Permissions = role.Permissions,
+            Permissions = role.Permissions.Where(p => visible.Contains(p)).ToList(),
             IsSystem = role.IsSystem
         };
     }
+
+    private HashSet<string> DelegablePermissions() =>
+        _currentUser.Role == AppRoles.SuperAdmin
+            ? new HashSet<string>(Permissions.All, StringComparer.OrdinalIgnoreCase)
+            : _currentUser.Permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static FilterDefinition<Order> OrderStatusFilter(string status) =>
         Builders<Order>.Filter.And(

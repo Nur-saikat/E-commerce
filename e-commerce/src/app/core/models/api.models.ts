@@ -162,6 +162,7 @@ export interface ProductSummary {
 }
 
 export interface ProductDetail extends ProductSummary {
+  costPrice?: number;
   shortDescription?: string | null;
   description: string;
   images: string[];
@@ -182,6 +183,7 @@ export interface ProductRequest {
   categoryId: string;
   brandId?: string | null;
   price: number;
+  costPrice: number;
   discountPrice?: number | null;
   stock: number;
   lowStockThreshold: number;
@@ -370,6 +372,9 @@ export interface Order {
   subtotal: number;
   discount: number;
   taxAmount: number;
+  pointsRedeemed: number;
+  pointsDiscount: number;
+  pointsEarned: number;
   total: number;
   status: string;
   paymentMethod: string;
@@ -383,6 +388,10 @@ export interface Order {
   completedAt?: string | null;
   cancelledAt?: string | null;
   cancellationReason?: string | null;
+  refundedAmount: number;
+  refundMethod?: string | null;
+  refundReference?: string | null;
+  refundedAt?: string | null;
   canCancel: boolean;
 }
 
@@ -409,6 +418,7 @@ export interface CheckoutRequest {
   notes?: string | null;
   guestEmail?: string | null;
   saveAddress: boolean;
+  useVoucherPoints?: boolean;
 }
 
 export interface ShippingMethod {
@@ -422,12 +432,23 @@ export interface ShippingMethod {
   isDefault: boolean;
 }
 
+export interface MobileBankingOption {
+  provider: string;
+  accountNumber: string;
+  instructions?: string | null;
+}
+
 export interface CheckoutConfig {
   shippingMethods: ShippingMethod[];
   taxRate: number;
   freeShippingThreshold: number;
   flatShippingRate: number;
   enabledPaymentMethods: string[];
+  mobileBanking: MobileBankingOption[];
+  voucherPointsEnabled: boolean;
+  voucherPointValue: number;
+  voucherEarnPercent: number;
+  voucherMaxRedeemPercent: number;
   currency: string;
   currencySymbol: string;
 }
@@ -548,6 +569,16 @@ export interface WebsiteSettings {
   codEnabled: boolean;
   stripeEnabled: boolean;
   sslCommerzEnabled: boolean;
+  bkashEnabled: boolean;
+  bkashMerchantNumber?: string | null;
+  nagadEnabled: boolean;
+  nagadMerchantNumber?: string | null;
+  rocketEnabled: boolean;
+  rocketMerchantNumber?: string | null;
+  voucherPointsEnabled: boolean;
+  voucherPointValue: number;
+  voucherEarnPercent: number;
+  voucherMaxRedeemPercent: number;
   socialLinks: Record<string, string>;
   footerAbout?: string | null;
   copyrightText?: string | null;
@@ -660,6 +691,7 @@ export interface InventoryItem {
   name: string;
   sku: string;
   categoryName?: string | null;
+  costPrice: number;
   stock: number;
   lowStockThreshold: number;
   totalStock: number;
@@ -722,7 +754,9 @@ export interface Payment {
   currency: string;
   status: string;
   transactionId?: string | null;
+  senderNumber?: string | null;
   failureReason?: string | null;
+  verifiedAt?: string | null;
   createdAt: string;
 }
 
@@ -762,6 +796,118 @@ export interface PaymentVerifyResult {
   transactionId?: string | null;
   message?: string | null;
   rawResponse?: string | null;
+}
+
+export interface MobilePaymentSubmitRequest {
+  orderId: string;
+  provider: string;
+  senderNumber: string;
+  transactionId: string;
+  guestEmail?: string | null;
+}
+
+export interface MobilePaymentVerifyRequest {
+  approve: boolean;
+  reference?: string | null;
+  note?: string | null;
+}
+
+export interface RefundRequest {
+  destination?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+  reference?: string | null;
+  note?: string | null;
+}
+
+export interface VoucherTransaction {
+  id: string;
+  points: number;
+  balanceAfter: number;
+  type: string;
+  orderId?: string | null;
+  orderNumber?: string | null;
+  note?: string | null;
+  createdAt: string;
+}
+
+export interface VoucherWallet {
+  balance: number;
+  lifetimeEarned: number;
+  lifetimeRedeemed: number;
+  pointValue: number;
+  earnPercent: number;
+  enabled: boolean;
+  transactions: VoucherTransaction[];
+}
+
+export interface ReturnItemRequest {
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
+}
+
+export interface CreateReturnRequest {
+  orderId: string;
+  items: ReturnItemRequest[];
+  reason: string;
+  comment?: string | null;
+  refundPreference: string;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+}
+
+export interface ReturnItem {
+  productId: string;
+  variantId?: string | null;
+  productName: string;
+  sku: string;
+  variantName?: string | null;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface ReturnRequest {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  userId?: string | null;
+  customerName: string;
+  customerEmail: string;
+  items: ReturnItem[];
+  reason: string;
+  comment?: string | null;
+  refundPreference: string;
+  refundAccountName?: string | null;
+  refundAccountNumber?: string | null;
+  refundBankName?: string | null;
+  status: string;
+  refundAmount: number;
+  refundPoints: number;
+  refundMethod?: string | null;
+  refundReference?: string | null;
+  adminNote?: string | null;
+  processedAt?: string | null;
+  processedBy?: string | null;
+  createdAt: string;
+}
+
+export interface ReturnQuery extends PagedQuery {
+  status?: string;
+  orderId?: string;
+}
+
+export interface UpdateReturnStatusRequest {
+  status: string;
+  adminNote?: string | null;
+  destination?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  bankName?: string | null;
+  reference?: string | null;
 }
 
 export interface OrderQuery extends PagedQuery {

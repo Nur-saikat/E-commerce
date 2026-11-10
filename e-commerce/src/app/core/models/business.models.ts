@@ -203,6 +203,88 @@ export interface StockArrivalQuery extends PagedQuery {
   to?: string;
 }
 
+export interface SupplierReturn {
+  id: string;
+  productId: string;
+  productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  supplier?: string | null;
+  reference?: string | null;
+  reason?: string | null;
+  note?: string | null;
+  returnDate: string;
+  stockRemoved: boolean;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface SupplierReturnRequest {
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
+  unitCost: number;
+  supplier?: string | null;
+  reference?: string | null;
+  reason?: string | null;
+  note?: string | null;
+  returnDate: string;
+}
+
+export interface SupplierReturnQuery extends PagedQuery {
+  productId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface StockPurchaseLine {
+  productId: string;
+  productName: string;
+  variantId?: string | null;
+  variantName?: string | null;
+  quantity: number;
+  unitCost: number;
+  lineTotal: number;
+}
+
+export interface StockPurchase {
+  id: string;
+  supplier?: string | null;
+  reference?: string | null;
+  note?: string | null;
+  purchaseDate: string;
+  stockApplied: boolean;
+  totalQuantity: number;
+  totalAmount: number;
+  items: StockPurchaseLine[];
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface StockPurchaseLineRequest {
+  productId: string;
+  variantId?: string | null;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface StockPurchaseRequest {
+  supplier?: string | null;
+  reference?: string | null;
+  note?: string | null;
+  purchaseDate: string;
+  items: StockPurchaseLineRequest[];
+}
+
+export interface StockPurchaseQuery extends PagedQuery {
+  productId?: string;
+  from?: string;
+  to?: string;
+}
+
 export interface BusinessVariantOption {
   id: string;
   name: string;
@@ -231,6 +313,7 @@ export interface ProfitLossPoint {
   netProfit: number;
   orders: number;
   purchases: number;
+  purchaseReturns: number;
 }
 
 export interface ProfitLossQuery {
@@ -251,6 +334,7 @@ export interface ProfitLoss {
   margin: number;
   orders: number;
   purchases: number;
+  purchaseReturns: number;
   capitalIn: number;
   capitalOut: number;
   series: ProfitLossPoint[];
@@ -265,6 +349,7 @@ export interface BusinessFinancials {
   margin: number;
   orders: number;
   purchases: number;
+  purchaseReturns: number;
 }
 
 export interface DepartmentBreakdown {
@@ -281,6 +366,7 @@ export interface BusinessOverview {
   capitalWithdrawn: number;
   netCapital: number;
   totalPurchases: number;
+  totalPurchaseReturns: number;
   inventoryValue: number;
   totalStaff: number;
   activeStaff: number;
@@ -289,6 +375,8 @@ export interface BusinessOverview {
   owner: OwnerProfile;
   monthlySeries: ProfitLossPoint[];
   recentArrivals: StockArrival[];
+  recentPurchases: StockPurchase[];
+  recentSupplierReturns: SupplierReturn[];
   recentExpenses: ExpenseEntry[];
   recentStaff: StaffMember[];
   staffByDepartment: DepartmentBreakdown[];

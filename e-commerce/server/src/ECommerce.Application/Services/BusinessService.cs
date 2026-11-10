@@ -459,6 +459,330 @@ public class BusinessService
         await _uow.StockArrivals.UpdateAsync(arrival, ct);
     }
 
+    public async Task<PagedResult<SupplierReturnDto>> GetSupplierReturnsAsync(SupplierReturnQuery query, CancellationToken ct = default)
+    {
+        var filters = new List<FilterDefinition<SupplierReturn>>
+        {
+            Builders<SupplierReturn>.Filter.Eq(r => r.IsDeleted, false)
+        };
+        if (query.From.HasValue) filters.Add(Builders<SupplierReturn>.Filter.Gte(r => r.ReturnDate, UtcDate(query.From.Value)));
+        if (query.To.HasValue) filters.Add(Builders<SupplierReturn>.Filter.Lt(r => r.ReturnDate, UtcDate(query.To.Value).AddDays(1)));
+        if (!string.IsNullOrWhiteSpace(query.ProductId) && ObjectId.TryParse(query.ProductId, out var productId))
+            filters.Add(Builders<SupplierReturn>.Filter.Eq(r => r.ProductId, productId));
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var pattern = new BsonRegularExpression(Regex.Escape(query.Search.Trim()), "i");
+            filters.Add(Builders<SupplierReturn>.Filter.Or(
+                Builders<SupplierReturn>.Filter.Regex(r => r.ProductName, pattern),
+                Builders<SupplierReturn>.Filter.Regex(r => r.Supplier, pattern),
+                Builders<SupplierReturn>.Filter.Regex(r => r.Reference, pattern),
+                Builders<SupplierReturn>.Filter.Regex(r => r.Reason, pattern)));
+        }
+
+        var filter = Builders<SupplierReturn>.Filter.And(filters);
+        var total = await _uow.SupplierReturns.CountAsync(filter, ct);
+        var items = await _uow.SupplierReturns.Collection.Find(filter)
+            .Sort(Builders<SupplierReturn>.Sort.Descending(r => r.ReturnDate))
+            .Skip((query.Page - 1) * query.PageSize)
+            .Limit(query.PageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<SupplierReturnDto>(items.Select(r => r.ToDto()).ToList(), total, query.Page, query.PageSize);
+    }
+
+    public async Task<SupplierReturnDto> CreateSupplierReturnAsync(SupplierReturnRequest request, CancellationToken ct = default)
+    {
+        if (!ObjectId.TryParse(request.ProductId, out var productId))
+            throw new BadRequestException("Invalid product");
+        if (request.Quantity <= 0)
+            throw new BadRequestException("Quantity must be at least 1");
+
+        var product = await _uow.Products.FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted, ct)
+            ?? throw new NotFoundException("Product not found");
+
+        ObjectId? variantId = null;
+        string? variantName = null;
+        int available;
+        if (!string.IsNullOrWhiteSpace(request.VariantId))
+        {
+            if (!ObjectId.TryParse(request.VariantId, out var vid))
+                throw new BadRequestException("Invalid variant");
+            var variant = product.Variants.FirstOrDefault(v => v.Id == vid)
+                ?? throw new NotFoundException("Variant not found");
+            variantId = vid;
+            variantName = variant.Name;
+            available = variant.Stock;
+        }
+        else
+        {
+            available = product.Stock;
+        }
+
+        if (request.Quantity > available)
+            throw new BadRequestException($"Only {available} unit(s) of {product.Name} are in stock to return");
+
+        var removed = await AdjustProductStockAsync(product.Id, variantId, -request.Quantity, ct);
+        if (!removed)
+            throw new BadRequestException("Could not remove stock for this supplier return");
+
+        var stockAfter = available - request.Quantity;
+        var supplierReturn = new SupplierReturn
+        {
+            ProductId = product.Id,
+            ProductName = product.Name,
+            VariantId = variantId,
+            VariantName = variantName,
+            Quantity = request.Quantity,
+            UnitCost = Math.Round(request.UnitCost, 2),
+            Supplier = request.Supplier?.Trim(),
+            Reference = request.Reference?.Trim(),
+            Reason = request.Reason?.Trim(),
+            Note = request.Note?.Trim(),
+            ReturnDate = request.ReturnDate == default ? DateTime.UtcNow : UtcDate(request.ReturnDate),
+            StockRemoved = true,
+            CreatedBy = _currentUser.UserId
+        };
+
+        try
+        {
+            await _uow.SupplierReturns.AddAsync(supplierReturn, ct);
+            await _uow.InventoryTransactions.AddAsync(new InventoryTransaction
+            {
+                ProductId = product.Id.ToString(),
+                VariantId = variantId?.ToString(),
+                ProductName = product.Name,
+                Type = "SupplierReturn",
+                QuantityChange = -request.Quantity,
+                StockAfter = stockAfter,
+                Reference = supplierReturn.Reference ?? supplierReturn.Id.ToString(),
+                Note = string.IsNullOrWhiteSpace(supplierReturn.Reason) ? "Returned to supplier" : supplierReturn.Reason,
+                CreatedBy = _currentUser.UserId
+            }, ct);
+        }
+        catch
+        {
+            await AdjustProductStockAsync(product.Id, variantId, request.Quantity, ct);
+            throw;
+        }
+
+        return supplierReturn.ToDto();
+    }
+
+    public async Task DeleteSupplierReturnAsync(string id, CancellationToken ct = default)
+    {
+        if (!ObjectId.TryParse(id, out var objectId)) throw new NotFoundException("Supplier return not found");
+        var supplierReturn = await _uow.SupplierReturns.FirstOrDefaultAsync(r => r.Id == objectId && !r.IsDeleted, ct)
+            ?? throw new NotFoundException("Supplier return not found");
+
+        if (supplierReturn.StockRemoved)
+        {
+            var restored = await AdjustProductStockAsync(
+                supplierReturn.ProductId, supplierReturn.VariantId, supplierReturn.Quantity, ct);
+            if (!restored)
+                throw new BadRequestException("Could not restore stock for this supplier return");
+        }
+
+        supplierReturn.IsDeleted = true;
+        supplierReturn.UpdatedAt = DateTime.UtcNow;
+        supplierReturn.UpdatedBy = _currentUser.UserId;
+        await _uow.SupplierReturns.UpdateAsync(supplierReturn, ct);
+    }
+
+    public async Task<PagedResult<StockPurchaseDto>> GetPurchasesAsync(StockPurchaseQuery query, CancellationToken ct = default)
+    {
+        var filters = new List<FilterDefinition<StockPurchase>>
+        {
+            Builders<StockPurchase>.Filter.Eq(p => p.IsDeleted, false)
+        };
+        if (query.From.HasValue) filters.Add(Builders<StockPurchase>.Filter.Gte(p => p.PurchaseDate, UtcDate(query.From.Value)));
+        if (query.To.HasValue) filters.Add(Builders<StockPurchase>.Filter.Lt(p => p.PurchaseDate, UtcDate(query.To.Value).AddDays(1)));
+        if (!string.IsNullOrWhiteSpace(query.ProductId) && ObjectId.TryParse(query.ProductId, out var productId))
+            filters.Add(Builders<StockPurchase>.Filter.ElemMatch(p => p.Items, i => i.ProductId == productId));
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var pattern = new BsonRegularExpression(Regex.Escape(query.Search.Trim()), "i");
+            filters.Add(Builders<StockPurchase>.Filter.Or(
+                Builders<StockPurchase>.Filter.Regex(p => p.Supplier, pattern),
+                Builders<StockPurchase>.Filter.Regex(p => p.Reference, pattern),
+                Builders<StockPurchase>.Filter.Regex(p => p.Note, pattern),
+                Builders<StockPurchase>.Filter.ElemMatch(p => p.Items,
+                    Builders<StockPurchaseLine>.Filter.Regex(i => i.ProductName, pattern))));
+        }
+
+        var filter = Builders<StockPurchase>.Filter.And(filters);
+        var total = await _uow.StockPurchases.CountAsync(filter, ct);
+        var items = await _uow.StockPurchases.Collection.Find(filter)
+            .Sort(Builders<StockPurchase>.Sort.Descending(p => p.PurchaseDate))
+            .Skip((query.Page - 1) * query.PageSize)
+            .Limit(query.PageSize)
+            .ToListAsync(ct);
+
+        return new PagedResult<StockPurchaseDto>(items.Select(p => p.ToDto()).ToList(), total, query.Page, query.PageSize);
+    }
+
+    public async Task<StockPurchaseDto> CreatePurchaseAsync(StockPurchaseRequest request, CancellationToken ct = default)
+    {
+        if (request.Items.Count == 0)
+            throw new BadRequestException("Add at least one product to the purchase");
+
+        var lines = new List<StockPurchaseLine>();
+        var seen = new HashSet<string>();
+        foreach (var item in request.Items)
+        {
+            if (!ObjectId.TryParse(item.ProductId, out var productId))
+                throw new BadRequestException("Invalid product");
+            if (item.Quantity <= 0)
+                throw new BadRequestException("Quantity must be at least 1");
+            if (!seen.Add($"{productId}:{item.VariantId}"))
+                throw new BadRequestException("The same product and variant cannot appear twice in one purchase");
+
+            var product = await _uow.Products.FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted, ct)
+                ?? throw new NotFoundException("Product not found");
+
+            ObjectId? variantId = null;
+            string? variantName = null;
+            if (!string.IsNullOrWhiteSpace(item.VariantId))
+            {
+                if (!ObjectId.TryParse(item.VariantId, out var vid))
+                    throw new BadRequestException("Invalid variant");
+                var variant = product.Variants.FirstOrDefault(v => v.Id == vid)
+                    ?? throw new NotFoundException("Variant not found");
+                variantId = vid;
+                variantName = variant.Name;
+            }
+
+            lines.Add(new StockPurchaseLine
+            {
+                ProductId = product.Id,
+                ProductName = product.Name,
+                VariantId = variantId,
+                VariantName = variantName,
+                Quantity = item.Quantity,
+                UnitCost = Math.Round(item.UnitCost, 2)
+            });
+        }
+
+        var purchase = new StockPurchase
+        {
+            Supplier = request.Supplier?.Trim(),
+            Reference = request.Reference?.Trim(),
+            Note = request.Note?.Trim(),
+            PurchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : UtcDate(request.PurchaseDate),
+            Items = lines,
+            CreatedBy = _currentUser.UserId
+        };
+
+        var applied = new List<StockPurchaseLine>();
+        var saved = false;
+        try
+        {
+            foreach (var line in lines)
+            {
+                if (!await AdjustProductStockAsync(line.ProductId, line.VariantId, line.Quantity, ct))
+                    throw new BadRequestException($"Could not add stock for {line.ProductName}");
+                applied.Add(line);
+            }
+
+            purchase.StockApplied = true;
+            await _uow.StockPurchases.AddAsync(purchase, ct);
+            saved = true;
+
+            var products = new Dictionary<ObjectId, Product>();
+            foreach (var line in lines)
+            {
+                if (!products.TryGetValue(line.ProductId, out var product))
+                {
+                    product = await _uow.Products.FirstOrDefaultAsync(p => p.Id == line.ProductId, ct);
+                    if (product is not null) products[line.ProductId] = product;
+                }
+
+                var stockAfter = line.VariantId.HasValue
+                    ? product?.Variants.FirstOrDefault(v => v.Id == line.VariantId.Value)?.Stock ?? 0
+                    : product?.Stock ?? 0;
+
+                await _uow.InventoryTransactions.AddAsync(new InventoryTransaction
+                {
+                    ProductId = line.ProductId.ToString(),
+                    VariantId = line.VariantId?.ToString(),
+                    ProductName = line.ProductName,
+                    Type = "Purchase",
+                    QuantityChange = line.Quantity,
+                    StockAfter = stockAfter,
+                    Reference = purchase.Reference ?? purchase.Id.ToString(),
+                    Note = string.IsNullOrWhiteSpace(purchase.Note) ? "Product purchase" : purchase.Note,
+                    CreatedBy = _currentUser.UserId
+                }, ct);
+
+                if (line.UnitCost > 0)
+                {
+                    await _uow.Products.UpdateOneAsync(
+                        Builders<Product>.Filter.Eq(p => p.Id, line.ProductId),
+                        Builders<Product>.Update.Set(p => p.CostPrice, line.UnitCost), ct);
+                }
+            }
+        }
+        catch
+        {
+            foreach (var line in applied)
+                await AdjustProductStockAsync(line.ProductId, line.VariantId, -line.Quantity, ct);
+
+            if (saved)
+            {
+                purchase.IsDeleted = true;
+                purchase.UpdatedAt = DateTime.UtcNow;
+                purchase.UpdatedBy = _currentUser.UserId;
+                await _uow.StockPurchases.UpdateAsync(purchase, ct);
+            }
+
+            throw;
+        }
+
+        return purchase.ToDto();
+    }
+
+    public async Task DeletePurchaseAsync(string id, CancellationToken ct = default)
+    {
+        if (!ObjectId.TryParse(id, out var objectId)) throw new NotFoundException("Purchase not found");
+        var purchase = await _uow.StockPurchases.FirstOrDefaultAsync(p => p.Id == objectId && !p.IsDeleted, ct)
+            ?? throw new NotFoundException("Purchase not found");
+
+        if (purchase.StockApplied)
+        {
+            foreach (var line in purchase.Items)
+            {
+                var product = await _uow.Products.FirstOrDefaultAsync(p => p.Id == line.ProductId, ct);
+                var available = line.VariantId.HasValue
+                    ? product?.Variants.FirstOrDefault(v => v.Id == line.VariantId.Value)?.Stock ?? 0
+                    : product?.Stock ?? 0;
+                if (available < line.Quantity)
+                    throw new BadRequestException(
+                        $"This purchase can no longer be reversed because {line.ProductName} stock has already been sold");
+            }
+
+            var reversed = new List<StockPurchaseLine>();
+            try
+            {
+                foreach (var line in purchase.Items)
+                {
+                    if (!await AdjustProductStockAsync(line.ProductId, line.VariantId, -line.Quantity, ct))
+                        throw new BadRequestException($"Could not reverse stock for {line.ProductName}");
+                    reversed.Add(line);
+                }
+            }
+            catch
+            {
+                foreach (var line in reversed)
+                    await AdjustProductStockAsync(line.ProductId, line.VariantId, line.Quantity, ct);
+                throw;
+            }
+        }
+
+        purchase.IsDeleted = true;
+        purchase.UpdatedAt = DateTime.UtcNow;
+        purchase.UpdatedBy = _currentUser.UserId;
+        await _uow.StockPurchases.UpdateAsync(purchase, ct);
+    }
+
     public async Task<List<BusinessProductOptionDto>> GetProductOptionsAsync(string? search, CancellationToken ct = default)
     {
         var filters = new List<FilterDefinition<Product>>
@@ -501,11 +825,12 @@ public class BusinessService
     public async Task<ProfitLossDto> GetProfitLossAsync(ProfitLossQuery query, CancellationToken ct = default)
     {
         var groupBy = string.Equals(query.GroupBy, "day", StringComparison.OrdinalIgnoreCase) ? "day" : "month";
-        var to = (query.To ?? DateTime.UtcNow).Date;
-        var from = query.From?.Date ??
-                   (groupBy == "day"
-                       ? to.AddDays(-29)
-                       : new DateTime(to.Year, to.Month, 1).AddMonths(-11));
+        var to = UtcDate(query.To ?? DateTime.UtcNow);
+        var from = query.From.HasValue
+            ? UtcDate(query.From.Value)
+            : (groupBy == "day"
+                ? to.AddDays(-29)
+                : new DateTime(to.Year, to.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(-11));
         if (from > to) throw new BadRequestException("The start date must be before the end date");
 
         var data = await LoadRangeAsync(from, to.AddDays(1), ct);
@@ -522,6 +847,7 @@ public class BusinessService
             Expenses = R(series.Sum(p => p.Expenses)),
             Orders = series.Sum(p => p.Orders),
             Purchases = R(series.Sum(p => p.Purchases)),
+            PurchaseReturns = R(series.Sum(p => p.PurchaseReturns)),
             CapitalIn = R(data.Capital.Where(c => c.Type is "Investment" or "Loan").Sum(c => c.Amount)),
             CapitalOut = R(data.Capital.Where(c => c.Type is "Withdrawal" or "LoanRepayment").Sum(c => c.Amount)),
             Series = series
@@ -549,12 +875,16 @@ public class BusinessService
         var todayOrders = all.Orders.Where(o => o.CreatedAt >= todayStart).ToList();
         var todayExpenses = all.Expenses.Where(e => e.ExpenseDate >= todayStart).ToList();
         var todayArrivals = all.Arrivals.Where(a => a.ArrivalDate >= todayStart).ToList();
+        var todayPurchases = all.Purchases.Where(p => p.PurchaseDate >= todayStart).ToList();
+        var todaySupplierReturns = all.SupplierReturns.Where(r => r.ReturnDate >= todayStart).ToList();
 
         var monthOrders = all.Orders.Where(o => o.CreatedAt >= monthStart).ToList();
         var monthExpenses = all.Expenses.Where(e => e.ExpenseDate >= monthStart).ToList();
         var monthArrivals = all.Arrivals.Where(a => a.ArrivalDate >= monthStart).ToList();
+        var monthPurchases = all.Purchases.Where(p => p.PurchaseDate >= monthStart).ToList();
+        var monthSupplierReturns = all.SupplierReturns.Where(r => r.ReturnDate >= monthStart).ToList();
 
-        var lifetime = Summarize(all.Orders, all.Expenses, all.Arrivals, fallback);
+        var lifetime = Summarize(all.Orders, all.Expenses, all.Arrivals, all.Purchases, all.SupplierReturns, fallback);
         var capitalInvested = all.Capital.Where(c => c.Type == "Investment").Sum(c => c.Amount);
         var capitalWithdrawn = all.Capital.Where(c => c.Type == "Withdrawal").Sum(c => c.Amount);
         var netCapital = all.Capital.Sum(c => c.Type is "Investment" or "Loan" ? c.Amount : -c.Amount);
@@ -566,13 +896,17 @@ public class BusinessService
 
         return new BusinessOverviewDto
         {
-            Today = Summarize(todayOrders, todayExpenses, todayArrivals, fallback),
-            ThisMonth = Summarize(monthOrders, monthExpenses, monthArrivals, fallback),
+            Today = Summarize(todayOrders, todayExpenses, todayArrivals, todayPurchases, todaySupplierReturns, fallback),
+            ThisMonth = Summarize(monthOrders, monthExpenses, monthArrivals, monthPurchases, monthSupplierReturns, fallback),
             Lifetime = lifetime,
             CapitalInvested = R(capitalInvested),
             CapitalWithdrawn = R(capitalWithdrawn),
             NetCapital = R(netCapital),
-            TotalPurchases = R(all.Arrivals.Sum(a => a.TotalCost)),
+            TotalPurchases = R(
+                all.Arrivals.Sum(a => a.TotalCost)
+                + all.Purchases.Sum(p => p.TotalAmount)
+                - all.SupplierReturns.Sum(r => r.TotalCost)),
+            TotalPurchaseReturns = R(all.SupplierReturns.Sum(r => r.TotalCost)),
             InventoryValue = R(products.Sum(p => p.TotalStock * p.CostPrice)),
             TotalStaff = staff.Count,
             ActiveStaff = activeStaff.Count,
@@ -581,6 +915,8 @@ public class BusinessService
             Owner = await GetOwnerProfileAsync(ct),
             MonthlySeries = BuildSeries("month", seriesStart, now.Date, all, fallback),
             RecentArrivals = all.Arrivals.OrderByDescending(a => a.ArrivalDate).Take(5).Select(a => a.ToDto()).ToList(),
+            RecentPurchases = all.Purchases.OrderByDescending(p => p.PurchaseDate).Take(5).Select(p => p.ToDto()).ToList(),
+            RecentSupplierReturns = all.SupplierReturns.OrderByDescending(r => r.ReturnDate).Take(5).Select(r => r.ToDto()).ToList(),
             RecentExpenses = all.Expenses.OrderByDescending(e => e.ExpenseDate).Take(5).Select(e => e.ToDto()).ToList(),
             RecentStaff = staff.OrderByDescending(s => s.JoinedOn).Take(5).Select(s => s.ToDto()).ToList(),
             StaffByDepartment = activeStaff
@@ -622,12 +958,22 @@ public class BusinessService
             Builders<StockArrival>.Filter.Gte(a => a.ArrivalDate, from),
             Builders<StockArrival>.Filter.Lt(a => a.ArrivalDate, toExclusive)), ct: ct);
 
+        var purchases = await _uow.StockPurchases.FindAsync(Builders<StockPurchase>.Filter.And(
+            Builders<StockPurchase>.Filter.Eq(p => p.IsDeleted, false),
+            Builders<StockPurchase>.Filter.Gte(p => p.PurchaseDate, from),
+            Builders<StockPurchase>.Filter.Lt(p => p.PurchaseDate, toExclusive)), ct: ct);
+
+        var supplierReturns = await _uow.SupplierReturns.FindAsync(Builders<SupplierReturn>.Filter.And(
+            Builders<SupplierReturn>.Filter.Eq(r => r.IsDeleted, false),
+            Builders<SupplierReturn>.Filter.Gte(r => r.ReturnDate, from),
+            Builders<SupplierReturn>.Filter.Lt(r => r.ReturnDate, toExclusive)), ct: ct);
+
         var capital = await _uow.CapitalEntries.FindAsync(Builders<CapitalEntry>.Filter.And(
             Builders<CapitalEntry>.Filter.Eq(e => e.IsDeleted, false),
             Builders<CapitalEntry>.Filter.Gte(e => e.EntryDate, from),
             Builders<CapitalEntry>.Filter.Lt(e => e.EntryDate, toExclusive)), ct: ct);
 
-        return new RangeData(orders, expenses, arrivals, capital);
+        return new RangeData(orders, expenses, arrivals, purchases, supplierReturns, capital);
     }
 
     private async Task<Dictionary<ObjectId, decimal>> GetFallbackCostsAsync(List<Order> orders, CancellationToken ct)
@@ -650,6 +996,7 @@ public class BusinessService
         var cogs = new Dictionary<string, decimal>();
         var expense = new Dictionary<string, decimal>();
         var purchases = new Dictionary<string, decimal>();
+        var purchaseReturns = new Dictionary<string, decimal>();
         var orders = new Dictionary<string, int>();
 
         foreach (var order in data.Orders)
@@ -669,6 +1016,17 @@ public class BusinessService
             var key = PeriodKey(arrival.ArrivalDate, groupBy);
             purchases[key] = purchases.GetValueOrDefault(key) + arrival.TotalCost;
         }
+        foreach (var purchase in data.Purchases)
+        {
+            var key = PeriodKey(purchase.PurchaseDate, groupBy);
+            purchases[key] = purchases.GetValueOrDefault(key) + purchase.TotalAmount;
+        }
+        foreach (var supplierReturn in data.SupplierReturns)
+        {
+            var key = PeriodKey(supplierReturn.ReturnDate, groupBy);
+            purchases[key] = purchases.GetValueOrDefault(key) - supplierReturn.TotalCost;
+            purchaseReturns[key] = purchaseReturns.GetValueOrDefault(key) + supplierReturn.TotalCost;
+        }
 
         var points = new List<ProfitLossPointDto>();
         foreach (var (start, end) in EnumeratePeriods(groupBy, from, to))
@@ -684,6 +1042,7 @@ public class BusinessService
                 CostOfGoods = R(cogs.GetValueOrDefault(key)),
                 Expenses = R(expense.GetValueOrDefault(key)),
                 Purchases = R(purchases.GetValueOrDefault(key)),
+                PurchaseReturns = R(purchaseReturns.GetValueOrDefault(key)),
                 Orders = orders.GetValueOrDefault(key)
             };
             point.GrossProfit = R(point.Revenue - point.CostOfGoods);
@@ -722,13 +1081,16 @@ public class BusinessService
         order.Items.Sum(i => (i.UnitCost > 0 ? i.UnitCost : fallback.GetValueOrDefault(i.ProductId)) * i.Quantity);
 
     private static BusinessFinancialsDto Summarize(List<Order> orders, List<ExpenseEntry> expenses,
-        List<StockArrival> arrivals, Dictionary<ObjectId, decimal> fallback)
+        List<StockArrival> arrivals, List<StockPurchase> purchases, List<SupplierReturn> supplierReturns,
+        Dictionary<ObjectId, decimal> fallback)
     {
         var revenue = orders.Sum(OrderRevenue);
         var cogs = orders.Sum(o => OrderCost(o, fallback));
         var expenseTotal = expenses.Sum(e => e.Amount);
         var gross = revenue - cogs;
         var net = gross - expenseTotal;
+        var purchased = arrivals.Sum(a => a.TotalCost) + purchases.Sum(p => p.TotalAmount);
+        var purchaseReturns = supplierReturns.Sum(r => r.TotalCost);
         return new BusinessFinancialsDto
         {
             Revenue = R(revenue),
@@ -738,7 +1100,8 @@ public class BusinessService
             NetProfit = R(net),
             Margin = revenue > 0 ? R(net / revenue * 100) : 0,
             Orders = orders.Count,
-            Purchases = R(arrivals.Sum(a => a.TotalCost))
+            Purchases = R(purchased - purchaseReturns),
+            PurchaseReturns = R(purchaseReturns)
         };
     }
 
@@ -827,9 +1190,14 @@ public class BusinessService
 
     private static decimal R(decimal value) => Math.Round(value, 2);
 
+    private static DateTime UtcDate(DateTime value) =>
+        DateTime.SpecifyKind(value.Date, DateTimeKind.Utc);
+
     private sealed record RangeData(
         List<Order> Orders,
         List<ExpenseEntry> Expenses,
         List<StockArrival> Arrivals,
+        List<StockPurchase> Purchases,
+        List<SupplierReturn> SupplierReturns,
         List<CapitalEntry> Capital);
 }

@@ -35,6 +35,8 @@ public class UnitOfWork : IUnitOfWork
         CapitalEntries = new MongoRepository<CapitalEntry>(database, "CapitalEntries");
         ExpenseEntries = new MongoRepository<ExpenseEntry>(database, "ExpenseEntries");
         StockArrivals = new MongoRepository<StockArrival>(database, "StockArrivals");
+        SupplierReturns = new MongoRepository<SupplierReturn>(database, "SupplierReturns");
+        StockPurchases = new MongoRepository<StockPurchase>(database, "StockPurchases");
         VoucherWallets = new MongoRepository<VoucherWallet>(database, "VoucherWallets");
         VoucherTransactions = new MongoRepository<VoucherTransaction>(database, "VoucherTransactions");
         ReturnRequests = new MongoRepository<ReturnRequest>(database, "ReturnRequests");
@@ -67,6 +69,8 @@ public class UnitOfWork : IUnitOfWork
     public IMongoRepository<CapitalEntry> CapitalEntries { get; }
     public IMongoRepository<ExpenseEntry> ExpenseEntries { get; }
     public IMongoRepository<StockArrival> StockArrivals { get; }
+    public IMongoRepository<SupplierReturn> SupplierReturns { get; }
+    public IMongoRepository<StockPurchase> StockPurchases { get; }
     public IMongoRepository<VoucherWallet> VoucherWallets { get; }
     public IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
     public IMongoRepository<ReturnRequest> ReturnRequests { get; }

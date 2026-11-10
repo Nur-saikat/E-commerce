@@ -116,4 +116,48 @@ public static class BusinessMappers
         CreatedBy = a.CreatedBy,
         CreatedAt = a.CreatedAt
     };
+
+    public static SupplierReturnDto ToDto(this SupplierReturn r) => new()
+    {
+        Id = r.Id.ToString(),
+        ProductId = r.ProductId.ToString(),
+        ProductName = r.ProductName,
+        VariantId = r.VariantId?.ToString(),
+        VariantName = r.VariantName,
+        Quantity = r.Quantity,
+        UnitCost = r.UnitCost,
+        TotalCost = r.TotalCost,
+        Supplier = r.Supplier,
+        Reference = r.Reference,
+        Reason = r.Reason,
+        Note = r.Note,
+        ReturnDate = r.ReturnDate,
+        StockRemoved = r.StockRemoved,
+        CreatedBy = r.CreatedBy,
+        CreatedAt = r.CreatedAt
+    };
+
+    public static StockPurchaseDto ToDto(this StockPurchase p) => new()
+    {
+        Id = p.Id.ToString(),
+        Supplier = p.Supplier,
+        Reference = p.Reference,
+        Note = p.Note,
+        PurchaseDate = p.PurchaseDate,
+        StockApplied = p.StockApplied,
+        TotalQuantity = p.TotalQuantity,
+        TotalAmount = p.TotalAmount,
+        Items = p.Items.Select(i => new StockPurchaseLineDto
+        {
+            ProductId = i.ProductId.ToString(),
+            ProductName = i.ProductName,
+            VariantId = i.VariantId?.ToString(),
+            VariantName = i.VariantName,
+            Quantity = i.Quantity,
+            UnitCost = i.UnitCost,
+            LineTotal = i.LineTotal
+        }).ToList(),
+        CreatedBy = p.CreatedBy,
+        CreatedAt = p.CreatedAt
+    };
 }

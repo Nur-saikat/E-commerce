@@ -83,9 +83,11 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
             <p class="mt-1 text-xs text-ink-400">Margin {{ data.margin }}%</p>
           </div>
           <div class="admin-card">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Purchases in range</p>
+            <p class="text-[11px] font-semibold uppercase tracking-wider text-ink-500">Net purchases in range</p>
             <p class="mt-2 font-display text-2xl font-semibold text-ink-900">{{ data.purchases | money }}</p>
-            <p class="mt-1 text-xs text-ink-400">Stock arrivals — tracked separately</p>
+            <p class="mt-1 text-xs text-ink-400">
+              {{ data.purchaseReturns | money }} returned to suppliers
+            </p>
           </div>
         </div>
 
@@ -158,6 +160,7 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
                 <th>Expenses</th>
                 <th>Net profit</th>
                 <th>Purchases</th>
+                <th>Returns</th>
               </tr>
             </thead>
             <tbody>
@@ -171,9 +174,10 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
                   <td class="text-sm text-ink-700">{{ point.expenses | money }}</td>
                   <td [class]="cellProfitClass(point)">{{ point.netProfit | money }}</td>
                   <td class="text-xs text-ink-500">{{ point.purchases | money }}</td>
+                  <td class="text-xs text-ink-500">{{ point.purchaseReturns | money }}</td>
                 </tr>
               } @empty {
-                <tr><td colspan="8" class="py-10 text-center text-sm text-ink-400">Nothing recorded in this range.</td></tr>
+                <tr><td colspan="9" class="py-10 text-center text-sm text-ink-400">Nothing recorded in this range.</td></tr>
               }
             </tbody>
             <tfoot>
@@ -188,6 +192,7 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
                   {{ data.netProfit | money }}
                 </td>
                 <td class="text-sm font-semibold text-ink-900">{{ data.purchases | money }}</td>
+                <td class="text-sm font-semibold text-ink-900">{{ data.purchaseReturns | money }}</td>
               </tr>
             </tfoot>
           </table>
@@ -272,7 +277,7 @@ export class AdminProfitLoss implements OnInit {
     const data = this.report();
     if (!data) return;
     const rows = [
-      ['period', 'orders', 'revenue', 'cost_of_goods', 'gross_profit', 'expenses', 'net_profit', 'purchases'],
+      ['period', 'orders', 'revenue', 'cost_of_goods', 'gross_profit', 'expenses', 'net_profit', 'purchases', 'purchase_returns'],
       ...data.series.map((point) => [
         point.period,
         point.orders,
@@ -281,7 +286,8 @@ export class AdminProfitLoss implements OnInit {
         point.grossProfit,
         point.expenses,
         point.netProfit,
-        point.purchases
+        point.purchases,
+        point.purchaseReturns
       ])
     ];
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n');

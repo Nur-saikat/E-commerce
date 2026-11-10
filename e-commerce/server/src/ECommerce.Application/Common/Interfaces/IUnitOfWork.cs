@@ -31,6 +31,8 @@ public interface IUnitOfWork
     IMongoRepository<CapitalEntry> CapitalEntries { get; }
     IMongoRepository<ExpenseEntry> ExpenseEntries { get; }
     IMongoRepository<StockArrival> StockArrivals { get; }
+    IMongoRepository<SupplierReturn> SupplierReturns { get; }
+    IMongoRepository<StockPurchase> StockPurchases { get; }
     IMongoRepository<VoucherWallet> VoucherWallets { get; }
     IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
     IMongoRepository<ReturnRequest> ReturnRequests { get; }

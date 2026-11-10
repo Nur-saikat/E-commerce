@@ -221,6 +221,96 @@ public class StockArrivalQuery : PagedQuery
     public DateTime? To { get; set; }
 }
 
+public class SupplierReturnDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string ProductId { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string? VariantId { get; set; }
+    public string? VariantName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal TotalCost { get; set; }
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Reason { get; set; }
+    public string? Note { get; set; }
+    public DateTime ReturnDate { get; set; }
+    public bool StockRemoved { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class SupplierReturnRequest
+{
+    public string ProductId { get; set; } = string.Empty;
+    public string? VariantId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Reason { get; set; }
+    public string? Note { get; set; }
+    public DateTime ReturnDate { get; set; }
+}
+
+public class SupplierReturnQuery : PagedQuery
+{
+    public string? ProductId { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+}
+
+public class StockPurchaseLineDto
+{
+    public string ProductId { get; set; } = string.Empty;
+    public string ProductName { get; set; } = string.Empty;
+    public string? VariantId { get; set; }
+    public string? VariantName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal LineTotal { get; set; }
+}
+
+public class StockPurchaseDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Note { get; set; }
+    public DateTime PurchaseDate { get; set; }
+    public bool StockApplied { get; set; }
+    public int TotalQuantity { get; set; }
+    public decimal TotalAmount { get; set; }
+    public List<StockPurchaseLineDto> Items { get; set; } = new();
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class StockPurchaseLineRequest
+{
+    public string ProductId { get; set; } = string.Empty;
+    public string? VariantId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+}
+
+public class StockPurchaseRequest
+{
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Note { get; set; }
+    public DateTime PurchaseDate { get; set; }
+    public List<StockPurchaseLineRequest> Items { get; set; } = new();
+}
+
+public class StockPurchaseQuery : PagedQuery
+{
+    public string? ProductId { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+}
+
 public class BusinessProductOptionDto
 {
     public string Id { get; set; } = string.Empty;
@@ -259,6 +349,7 @@ public class ProfitLossPointDto
     public decimal NetProfit { get; set; }
     public int Orders { get; set; }
     public decimal Purchases { get; set; }
+    public decimal PurchaseReturns { get; set; }
 }
 
 public class ProfitLossDto
@@ -274,6 +365,7 @@ public class ProfitLossDto
     public decimal Margin { get; set; }
     public int Orders { get; set; }
     public decimal Purchases { get; set; }
+    public decimal PurchaseReturns { get; set; }
     public decimal CapitalIn { get; set; }
     public decimal CapitalOut { get; set; }
     public List<ProfitLossPointDto> Series { get; set; } = new();
@@ -289,6 +381,7 @@ public class BusinessFinancialsDto
     public decimal Margin { get; set; }
     public int Orders { get; set; }
     public decimal Purchases { get; set; }
+    public decimal PurchaseReturns { get; set; }
 }
 
 public class DepartmentBreakdownDto
@@ -307,6 +400,7 @@ public class BusinessOverviewDto
     public decimal CapitalWithdrawn { get; set; }
     public decimal NetCapital { get; set; }
     public decimal TotalPurchases { get; set; }
+    public decimal TotalPurchaseReturns { get; set; }
     public decimal InventoryValue { get; set; }
     public int TotalStaff { get; set; }
     public int ActiveStaff { get; set; }
@@ -315,6 +409,8 @@ public class BusinessOverviewDto
     public OwnerProfileDto Owner { get; set; } = new();
     public List<ProfitLossPointDto> MonthlySeries { get; set; } = new();
     public List<StockArrivalDto> RecentArrivals { get; set; } = new();
+    public List<SupplierReturnDto> RecentSupplierReturns { get; set; } = new();
+    public List<StockPurchaseDto> RecentPurchases { get; set; } = new();
     public List<ExpenseEntryDto> RecentExpenses { get; set; } = new();
     public List<StaffMemberDto> RecentStaff { get; set; } = new();
     public List<DepartmentBreakdownDto> StaffByDepartment { get; set; } = new();

@@ -140,7 +140,9 @@ export class AdminLayout implements OnInit, OnDestroy {
         { label: 'Profit & loss', link: '/admin/business/profit-loss', icon: 'chart', permission: 'business.view' },
         { label: 'Investments', link: '/admin/business/investments', icon: 'wallet', permission: 'business.view' },
         { label: 'Expenses', link: '/admin/business/expenses', icon: 'receipt', permission: 'business.view' },
+        { label: 'Purchases', link: '/admin/business/purchases', icon: 'cart', permission: 'business.view' },
         { label: 'Arrivals', link: '/admin/business/arrivals', icon: 'package', permission: 'business.view' },
+        { label: 'Supplier returns', link: '/admin/business/supplier-returns', icon: 'rotate-ccw', permission: 'business.view' },
         { label: 'Staff & CVs', link: '/admin/business/staff', icon: 'users', permission: 'business.view' },
         { label: 'Owner profile', link: '/admin/business/owner', icon: 'user', permission: 'business.view' }
       ]

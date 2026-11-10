@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import {
   BusinessProductOption,
@@ -20,7 +21,7 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 @Component({
   selector: 'app-admin-arrivals',
   standalone: true,
-  imports: [ReactiveFormsModule, Icon, Pagination, MoneyPipe, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, Icon, Pagination, MoneyPipe, DatePipe],
   template: `
     <div class="space-y-5 page-enter">
       <div class="flex flex-wrap items-end justify-between gap-3">
@@ -34,6 +35,18 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
             <app-icon name="plus" [size]="14" /> Record arrival
           </button>
         }
+      </div>
+
+      <div class="flex flex-wrap gap-1.5">
+        <a routerLink="/admin/business/purchases" class="btn-outline btn-sm">
+          <app-icon name="cart" [size]="13" /> Purchases
+        </a>
+        <span class="btn-primary btn-sm pointer-events-none">
+          <app-icon name="package" [size]="13" /> Stock arrivals
+        </span>
+        <a routerLink="/admin/business/supplier-returns" class="btn-outline btn-sm">
+          <app-icon name="rotate-ccw" [size]="13" /> Supplier returns
+        </a>
       </div>
 
       <div class="admin-card">

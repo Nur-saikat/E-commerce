@@ -103,6 +103,46 @@ public class StockArrival : BaseEntity
     public bool StockApplied { get; set; }
 }
 
+public class SupplierReturn : BaseEntity
+{
+    public ObjectId ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public ObjectId? VariantId { get; set; }
+    public string? VariantName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal TotalCost => Math.Round(Quantity * UnitCost, 2);
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Reason { get; set; }
+    public string? Note { get; set; }
+    public DateTime ReturnDate { get; set; } = DateTime.UtcNow;
+    public bool StockRemoved { get; set; }
+}
+
+public class StockPurchase : BaseEntity
+{
+    public string? Supplier { get; set; }
+    public string? Reference { get; set; }
+    public string? Note { get; set; }
+    public DateTime PurchaseDate { get; set; } = DateTime.UtcNow;
+    public bool StockApplied { get; set; }
+    public List<StockPurchaseLine> Items { get; set; } = new();
+    public int TotalQuantity => Items.Sum(i => i.Quantity);
+    public decimal TotalAmount => Math.Round(Items.Sum(i => i.LineTotal), 2);
+}
+
+public class StockPurchaseLine
+{
+    public ObjectId ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public ObjectId? VariantId { get; set; }
+    public string? VariantName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal LineTotal => Math.Round(Quantity * UnitCost, 2);
+}
+
 public static class BusinessConstants
 {
     public static readonly string[] StaffStatuses = { "Active", "OnLeave", "Resigned", "Terminated" };

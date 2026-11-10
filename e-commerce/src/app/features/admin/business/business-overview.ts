@@ -120,8 +120,12 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
                 <span class="text-sm font-semibold text-ink-900">{{ overview.capitalWithdrawn | money }}</span>
               </div>
               <div class="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2.5">
-                <span class="text-sm text-ink-600">Total purchases</span>
+                <span class="text-sm text-ink-600">Net purchases</span>
                 <span class="text-sm font-semibold text-ink-900">{{ overview.totalPurchases | money }}</span>
+              </div>
+              <div class="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2.5">
+                <span class="text-sm text-ink-600">Returned to suppliers</span>
+                <span class="text-sm font-semibold text-ink-900">{{ overview.totalPurchaseReturns | money }}</span>
               </div>
               <div class="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2.5">
                 <span class="text-sm text-ink-600">Inventory at cost</span>
@@ -175,7 +179,7 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
             <div class="flex items-center justify-between">
               <div>
                 <h3 class="text-sm font-semibold text-ink-900">Recent stock arrivals</h3>
-                <p class="text-xs text-ink-400">{{ overview.totalPurchases | money }} purchased to date</p>
+                <p class="text-xs text-ink-400">{{ overview.totalPurchases | money }} net purchases to date</p>
               </div>
               <a routerLink="/admin/business/arrivals" class="text-xs font-medium text-ink-600 hover:text-ink-900">View all</a>
             </div>
@@ -228,6 +232,68 @@ import { MoneyPipe } from '../../../shared/pipes/money.pipe';
             </div>
           </section>
         </div>
+
+        <section class="admin-card">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-ink-900">Recent purchases</h3>
+              <p class="text-xs text-ink-400">Supplier invoices with multiple products at once</p>
+            </div>
+            <a routerLink="/admin/business/purchases" class="text-xs font-medium text-ink-600 hover:text-ink-900">View all</a>
+          </div>
+          <div class="mt-4 grid gap-2 md:grid-cols-2">
+            @for (item of overview.recentPurchases; track item.id) {
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-ink-100 px-3 py-2.5">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-ink-900">{{ item.supplier || 'Supplier invoice' }}</p>
+                  <p class="text-[11px] text-ink-400">
+                    {{ item.items.length }} line(s) · {{ item.totalQuantity }} unit(s)
+                    @if (item.reference) {
+                      · {{ item.reference }}
+                    }
+                    · {{ item.purchaseDate | date: 'MMM d, y' }}
+                  </p>
+                </div>
+                <span class="text-sm font-semibold text-ink-900">{{ item.totalAmount | money }}</span>
+              </div>
+            } @empty {
+              <p class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-xs text-ink-400 md:col-span-2">
+                No purchases recorded yet.
+              </p>
+            }
+          </div>
+        </section>
+
+        <section class="admin-card">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-ink-900">Recent supplier returns</h3>
+              <p class="text-xs text-ink-400">{{ overview.totalPurchaseReturns | money }} returned to suppliers</p>
+            </div>
+            <a routerLink="/admin/business/supplier-returns" class="text-xs font-medium text-ink-600 hover:text-ink-900">View all</a>
+          </div>
+          <div class="mt-4 grid gap-2 md:grid-cols-2">
+            @for (item of overview.recentSupplierReturns; track item.id) {
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-ink-100 px-3 py-2.5">
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-medium text-ink-900">{{ item.productName }}</p>
+                  <p class="text-[11px] text-ink-400">
+                    {{ item.quantity }} × {{ item.unitCost | money }}
+                    @if (item.supplier) {
+                      · {{ item.supplier }}
+                    }
+                    · {{ item.returnDate | date: 'MMM d, y' }}
+                  </p>
+                </div>
+                <span class="text-sm font-semibold text-ink-900">{{ item.totalCost | money }}</span>
+              </div>
+            } @empty {
+              <p class="rounded-xl border border-dashed border-ink-200 px-4 py-6 text-center text-xs text-ink-400 md:col-span-2">
+                No supplier returns recorded yet.
+              </p>
+            }
+          </div>
+        </section>
 
         <div class="grid gap-5 xl:grid-cols-[1fr_1fr_1.2fr]">
           <section class="admin-card">

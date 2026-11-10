@@ -146,6 +146,42 @@ public class BusinessController : ApiControllerBase
         return Success("Stock arrival deleted");
     }
 
+    [HttpGet("purchases")]
+    [HasPermission(Permissions.BusinessView)]
+    public async Task<IActionResult> Purchases([FromQuery] StockPurchaseQuery query, CancellationToken ct) =>
+        Paged(await _business.GetPurchasesAsync(query, ct));
+
+    [HttpPost("purchases")]
+    [HasPermission(Permissions.BusinessManage)]
+    public async Task<IActionResult> CreatePurchase([FromBody] StockPurchaseRequest request, CancellationToken ct) =>
+        Success(await _business.CreatePurchaseAsync(request, ct), "Purchase recorded");
+
+    [HttpDelete("purchases/{id}")]
+    [HasPermission(Permissions.BusinessManage)]
+    public async Task<IActionResult> DeletePurchase(string id, CancellationToken ct)
+    {
+        await _business.DeletePurchaseAsync(id, ct);
+        return Success("Purchase deleted");
+    }
+
+    [HttpGet("supplier-returns")]
+    [HasPermission(Permissions.BusinessView)]
+    public async Task<IActionResult> SupplierReturns([FromQuery] SupplierReturnQuery query, CancellationToken ct) =>
+        Paged(await _business.GetSupplierReturnsAsync(query, ct));
+
+    [HttpPost("supplier-returns")]
+    [HasPermission(Permissions.BusinessManage)]
+    public async Task<IActionResult> CreateSupplierReturn([FromBody] SupplierReturnRequest request, CancellationToken ct) =>
+        Success(await _business.CreateSupplierReturnAsync(request, ct), "Supplier return recorded");
+
+    [HttpDelete("supplier-returns/{id}")]
+    [HasPermission(Permissions.BusinessManage)]
+    public async Task<IActionResult> DeleteSupplierReturn(string id, CancellationToken ct)
+    {
+        await _business.DeleteSupplierReturnAsync(id, ct);
+        return Success("Supplier return deleted");
+    }
+
     [HttpGet("products")]
     [HasPermission(Permissions.BusinessView)]
     public async Task<IActionResult> Products([FromQuery] string? search, CancellationToken ct) =>

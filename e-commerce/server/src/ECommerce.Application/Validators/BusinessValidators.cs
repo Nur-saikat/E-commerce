@@ -102,3 +102,34 @@ public class StockArrivalRequestValidator : AbstractValidator<StockArrivalReques
         RuleFor(x => x.Note).MaximumLength(1000);
     }
 }
+
+public class SupplierReturnRequestValidator : AbstractValidator<SupplierReturnRequest>
+{
+    public SupplierReturnRequestValidator()
+    {
+        RuleFor(x => x.ProductId).NotEmpty();
+        RuleFor(x => x.Quantity).GreaterThan(0);
+        RuleFor(x => x.UnitCost).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Supplier).MaximumLength(150);
+        RuleFor(x => x.Reference).MaximumLength(120);
+        RuleFor(x => x.Reason).MaximumLength(200);
+        RuleFor(x => x.Note).MaximumLength(1000);
+    }
+}
+
+public class StockPurchaseRequestValidator : AbstractValidator<StockPurchaseRequest>
+{
+    public StockPurchaseRequestValidator()
+    {
+        RuleFor(x => x.Supplier).MaximumLength(150);
+        RuleFor(x => x.Reference).MaximumLength(120);
+        RuleFor(x => x.Note).MaximumLength(1000);
+        RuleFor(x => x.Items).NotEmpty().WithMessage("Add at least one product to the purchase");
+        RuleForEach(x => x.Items).ChildRules(item =>
+        {
+            item.RuleFor(x => x.ProductId).NotEmpty();
+            item.RuleFor(x => x.Quantity).GreaterThan(0);
+            item.RuleFor(x => x.UnitCost).GreaterThanOrEqualTo(0);
+        });
+    }
+}

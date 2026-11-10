@@ -21,7 +21,13 @@ import {
   StaffRequest,
   StockArrival,
   StockArrivalQuery,
-  StockArrivalRequest
+  StockArrivalRequest,
+  StockPurchase,
+  StockPurchaseQuery,
+  StockPurchaseRequest,
+  SupplierReturn,
+  SupplierReturnQuery,
+  SupplierReturnRequest
 } from '../models/business.models';
 import { ApiService, QueryParams } from './api.service';
 
@@ -105,6 +111,30 @@ export class BusinessService {
 
   deleteArrival(id: string): Observable<unknown> {
     return this.api.delete<unknown>(`admin/business/arrivals/${id}`);
+  }
+
+  purchases(query: StockPurchaseQuery = {}): Observable<Paged<StockPurchase>> {
+    return this.api.getPaged<StockPurchase>('admin/business/purchases', query as QueryParams);
+  }
+
+  createPurchase(request: StockPurchaseRequest): Observable<StockPurchase> {
+    return this.api.post<StockPurchase>('admin/business/purchases', request);
+  }
+
+  deletePurchase(id: string): Observable<unknown> {
+    return this.api.delete<unknown>(`admin/business/purchases/${id}`);
+  }
+
+  supplierReturns(query: SupplierReturnQuery = {}): Observable<Paged<SupplierReturn>> {
+    return this.api.getPaged<SupplierReturn>('admin/business/supplier-returns', query as QueryParams);
+  }
+
+  createSupplierReturn(request: SupplierReturnRequest): Observable<SupplierReturn> {
+    return this.api.post<SupplierReturn>('admin/business/supplier-returns', request);
+  }
+
+  deleteSupplierReturn(id: string): Observable<unknown> {
+    return this.api.delete<unknown>(`admin/business/supplier-returns/${id}`);
   }
 
   productOptions(search?: string): Observable<BusinessProductOption[]> {

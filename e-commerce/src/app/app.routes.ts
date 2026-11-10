@@ -187,10 +187,22 @@ export const routes: Routes = [
         loadComponent: () => import('./features/admin/business/admin-expenses').then((m) => m.AdminExpenses)
       },
       {
+        path: 'business/purchases',
+        title: 'Purchases — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-purchases').then((m) => m.AdminPurchases)
+      },
+      {
         path: 'business/arrivals',
         title: 'Arrivals — Safwan Admin',
         canActivate: [permissionGuard('business.view')],
         loadComponent: () => import('./features/admin/business/admin-arrivals').then((m) => m.AdminArrivals)
+      },
+      {
+        path: 'business/supplier-returns',
+        title: 'Supplier returns — Safwan Admin',
+        canActivate: [permissionGuard('business.view')],
+        loadComponent: () => import('./features/admin/business/admin-supplier-returns').then((m) => m.AdminSupplierReturns)
       },
       {
         path: 'business/staff',

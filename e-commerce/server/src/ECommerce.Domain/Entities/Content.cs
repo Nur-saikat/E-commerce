@@ -45,6 +45,16 @@ public class WebsiteSettings : BaseEntity
     public bool CodEnabled { get; set; } = true;
     public bool StripeEnabled { get; set; }
     public bool SslCommerzEnabled { get; set; }
+    public bool BkashEnabled { get; set; }
+    public string? BkashMerchantNumber { get; set; }
+    public bool NagadEnabled { get; set; }
+    public string? NagadMerchantNumber { get; set; }
+    public bool RocketEnabled { get; set; }
+    public string? RocketMerchantNumber { get; set; }
+    public bool VoucherPointsEnabled { get; set; } = true;
+    public decimal VoucherPointValue { get; set; } = 1;
+    public decimal VoucherEarnPercent { get; set; } = 5;
+    public decimal VoucherMaxRedeemPercent { get; set; } = 100;
     public Dictionary<string, string> SocialLinks { get; set; } = new();
     public EmailSettings EmailSettings { get; set; } = new();
     public string? FooterAbout { get; set; }

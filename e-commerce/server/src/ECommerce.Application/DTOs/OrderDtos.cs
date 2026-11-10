@@ -35,6 +35,7 @@ public class CheckoutRequest
     public string? Notes { get; set; }
     public string? GuestEmail { get; set; }
     public bool SaveAddress { get; set; }
+    public bool UseVoucherPoints { get; set; }
 }
 
 public class OrderItemDto
@@ -76,6 +77,13 @@ public class OrderDto
     public decimal Discount { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal Total { get; set; }
+    public int PointsRedeemed { get; set; }
+    public decimal PointsDiscount { get; set; }
+    public int PointsEarned { get; set; }
+    public decimal RefundedAmount { get; set; }
+    public string? RefundMethod { get; set; }
+    public string? RefundReference { get; set; }
+    public DateTime? RefundedAt { get; set; }
     public string Status { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
@@ -125,6 +133,32 @@ public class CancelOrderRequest
 {
     public string? Reason { get; set; }
     public bool RestoreStock { get; set; } = true;
+}
+
+public class RefundRequest
+{
+    public string Destination { get; set; } = RefundDestinations.Original;
+    public string? AccountName { get; set; }
+    public string? AccountNumber { get; set; }
+    public string? BankName { get; set; }
+    public string? Reference { get; set; }
+    public string? Note { get; set; }
+}
+
+public class MobilePaymentSubmitRequest
+{
+    public string OrderId { get; set; } = string.Empty;
+    public string Provider { get; set; } = string.Empty;
+    public string SenderNumber { get; set; } = string.Empty;
+    public string TransactionId { get; set; } = string.Empty;
+    public string? GuestEmail { get; set; }
+}
+
+public class MobilePaymentVerifyRequest
+{
+    public bool Approve { get; set; } = true;
+    public string? Reference { get; set; }
+    public string? Note { get; set; }
 }
 
 public class CouponDto
@@ -238,7 +272,9 @@ public class PaymentDto
     public string Currency { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? TransactionId { get; set; }
+    public string? SenderNumber { get; set; }
     public string? FailureReason { get; set; }
+    public DateTime? VerifiedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -249,6 +285,18 @@ public class CheckoutConfigDto
     public decimal FreeShippingThreshold { get; set; }
     public decimal FlatShippingRate { get; set; }
     public List<string> EnabledPaymentMethods { get; set; } = new();
+    public List<MobileBankingOptionDto> MobileBanking { get; set; } = new();
+    public bool VoucherPointsEnabled { get; set; }
+    public decimal VoucherPointValue { get; set; } = 1;
+    public decimal VoucherEarnPercent { get; set; }
+    public decimal VoucherMaxRedeemPercent { get; set; } = 100;
     public string Currency { get; set; } = "USD";
     public string CurrencySymbol { get; set; } = "$";
+}
+
+public class MobileBankingOptionDto
+{
+    public string Provider { get; set; } = string.Empty;
+    public string AccountNumber { get; set; } = string.Empty;
+    public string Instructions { get; set; } = string.Empty;
 }

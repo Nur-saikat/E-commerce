@@ -217,6 +217,13 @@ public static class Mappers
         Discount = o.Discount,
         TaxAmount = o.TaxAmount,
         Total = o.Total,
+        PointsRedeemed = o.PointsRedeemed,
+        PointsDiscount = o.PointsDiscount,
+        PointsEarned = o.PointsEarned,
+        RefundedAmount = o.RefundedAmount,
+        RefundMethod = o.RefundMethod,
+        RefundReference = o.RefundReference,
+        RefundedAt = o.RefundedAt,
         Status = o.Status,
         PaymentMethod = o.PaymentMethod,
         PaymentStatus = o.PaymentStatus,
@@ -351,7 +358,9 @@ public static class Mappers
         Currency = p.Currency,
         Status = p.Status,
         TransactionId = p.TransactionId,
+        SenderNumber = p.SenderNumber,
         FailureReason = p.FailureReason,
+        VerifiedAt = p.VerifiedAt,
         CreatedAt = p.CreatedAt
     };
 
@@ -386,6 +395,16 @@ public static class Mappers
         CodEnabled = s.CodEnabled,
         StripeEnabled = s.StripeEnabled,
         SslCommerzEnabled = s.SslCommerzEnabled,
+        BkashEnabled = s.BkashEnabled,
+        BkashMerchantNumber = s.BkashMerchantNumber,
+        NagadEnabled = s.NagadEnabled,
+        NagadMerchantNumber = s.NagadMerchantNumber,
+        RocketEnabled = s.RocketEnabled,
+        RocketMerchantNumber = s.RocketMerchantNumber,
+        VoucherPointsEnabled = s.VoucherPointsEnabled,
+        VoucherPointValue = s.VoucherPointValue,
+        VoucherEarnPercent = s.VoucherEarnPercent,
+        VoucherMaxRedeemPercent = s.VoucherMaxRedeemPercent,
         SocialLinks = s.SocialLinks,
         FooterAbout = s.FooterAbout,
         CopyrightText = s.CopyrightText,
@@ -395,5 +414,55 @@ public static class Mappers
             Url = m.Url,
             SortOrder = m.SortOrder
         }).ToList()
+    };
+
+    public static VoucherTransactionDto ToDto(this VoucherTransaction t) => new()
+    {
+        Id = t.Id.ToString(),
+        Points = t.Points,
+        BalanceAfter = t.BalanceAfter,
+        Type = t.Type,
+        OrderId = t.OrderId,
+        OrderNumber = t.OrderNumber,
+        Note = t.Note,
+        CreatedAt = t.CreatedAt
+    };
+
+    public static ReturnItemDto ToDto(this ReturnItem i) => new()
+    {
+        ProductId = i.ProductId.ToString(),
+        VariantId = i.VariantId.Id(),
+        ProductName = i.ProductName,
+        Sku = i.Sku,
+        VariantName = i.VariantName,
+        UnitPrice = i.UnitPrice,
+        Quantity = i.Quantity,
+        LineTotal = i.LineTotal
+    };
+
+    public static ReturnRequestDto ToDto(this ReturnRequest r) => new()
+    {
+        Id = r.Id.ToString(),
+        OrderId = r.OrderId.ToString(),
+        OrderNumber = r.OrderNumber,
+        UserId = r.UserId,
+        CustomerName = r.CustomerName,
+        CustomerEmail = r.CustomerEmail,
+        Items = r.Items.Select(i => i.ToDto()).ToList(),
+        Reason = r.Reason,
+        Comment = r.Comment,
+        RefundPreference = r.RefundPreference,
+        RefundAccountName = r.RefundAccountName,
+        RefundAccountNumber = r.RefundAccountNumber,
+        RefundBankName = r.RefundBankName,
+        Status = r.Status,
+        RefundAmount = r.RefundAmount,
+        RefundPoints = r.RefundPoints,
+        RefundMethod = r.RefundMethod,
+        RefundReference = r.RefundReference,
+        AdminNote = r.AdminNote,
+        ProcessedAt = r.ProcessedAt,
+        ProcessedBy = r.ProcessedBy,
+        CreatedAt = r.CreatedAt
     };
 }

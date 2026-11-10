@@ -30,6 +30,14 @@ public class UnitOfWork : IUnitOfWork
         NewsletterSubscribers = new MongoRepository<NewsletterSubscriber>(database, "NewsletterSubscribers");
         WebsiteSettings = new MongoRepository<WebsiteSettings>(database, "WebsiteSettings");
         AuditLogs = new MongoRepository<AuditLog>(database, "AuditLogs");
+        StaffMembers = new MongoRepository<StaffMember>(database, "StaffMembers");
+        OwnerProfiles = new MongoRepository<OwnerProfile>(database, "OwnerProfiles");
+        CapitalEntries = new MongoRepository<CapitalEntry>(database, "CapitalEntries");
+        ExpenseEntries = new MongoRepository<ExpenseEntry>(database, "ExpenseEntries");
+        StockArrivals = new MongoRepository<StockArrival>(database, "StockArrivals");
+        VoucherWallets = new MongoRepository<VoucherWallet>(database, "VoucherWallets");
+        VoucherTransactions = new MongoRepository<VoucherTransaction>(database, "VoucherTransactions");
+        ReturnRequests = new MongoRepository<ReturnRequest>(database, "ReturnRequests");
     }
 
     public IMongoRepository<User> Users { get; }
@@ -54,4 +62,12 @@ public class UnitOfWork : IUnitOfWork
     public IMongoRepository<NewsletterSubscriber> NewsletterSubscribers { get; }
     public IMongoRepository<WebsiteSettings> WebsiteSettings { get; }
     public IMongoRepository<AuditLog> AuditLogs { get; }
+    public IMongoRepository<StaffMember> StaffMembers { get; }
+    public IMongoRepository<OwnerProfile> OwnerProfiles { get; }
+    public IMongoRepository<CapitalEntry> CapitalEntries { get; }
+    public IMongoRepository<ExpenseEntry> ExpenseEntries { get; }
+    public IMongoRepository<StockArrival> StockArrivals { get; }
+    public IMongoRepository<VoucherWallet> VoucherWallets { get; }
+    public IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
+    public IMongoRepository<ReturnRequest> ReturnRequests { get; }
 }

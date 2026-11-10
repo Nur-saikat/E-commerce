@@ -48,7 +48,7 @@ const NEXT_STATUS: Record<string, string[]> = {
           </button>
           @if (order(); as data) {
             @if (canRefund(data)) {
-              <button type="button" class="btn-danger btn-sm" (click)="refund(data)">
+              <button type="button" class="btn-danger btn-sm" (click)="startRefund()">
                 <app-icon name="rotate-ccw" [size]="14" /> Refund order
               </button>
             }
@@ -61,6 +61,60 @@ const NEXT_STATUS: Record<string, string[]> = {
       } @else if (error()) {
         <div class="admin-card text-sm text-danger">{{ error() }}</div>
       } @else if (order(); as data) {
+        @if (showRefund()) {
+          <section class="admin-card border border-amber-200 bg-amber-50/40">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold text-ink-900">Refund {{ data.orderNumber }}</h3>
+                <p class="mt-1 text-xs text-ink-500">Choose where the money should go. Stock is restored automatically.</p>
+              </div>
+              <button type="button" class="btn-ghost btn-sm" (click)="cancelRefund()">Cancel</button>
+            </div>
+            <form [formGroup]="refundForm" class="mt-4 grid gap-3 sm:grid-cols-2" (ngSubmit)="submitRefund(data)">
+              <div>
+                <label class="label" for="refund-destination">Refund to</label>
+                <select id="refund-destination" formControlName="destination" class="input">
+                  <option value="Original">Original payment method</option>
+                  <option value="bKash">bKash</option>
+                  <option value="Nagad">Nagad</option>
+                  <option value="Rocket">Rocket</option>
+                  <option value="BankTransfer">Bank transfer</option>
+                  <option value="Voucher">Voucher points</option>
+                </select>
+              </div>
+              <div>
+                <label class="label" for="refund-account-name">Account name</label>
+                <input id="refund-account-name" formControlName="accountName" class="input" placeholder="Account holder" />
+              </div>
+              @if (refundForm.controls.destination.value !== 'Voucher') {
+                <div>
+                  <label class="label" for="refund-account">Account / mobile number</label>
+                  <input id="refund-account" formControlName="accountNumber" class="input" placeholder="e.g. 017XXXXXXXX" />
+                </div>
+                @if (refundForm.controls.destination.value === 'BankTransfer') {
+                  <div>
+                    <label class="label" for="refund-bank">Bank name</label>
+                    <input id="refund-bank" formControlName="bankName" class="input" placeholder="Bank name" />
+                  </div>
+                }
+              }
+              <div>
+                <label class="label" for="refund-reference">Transaction reference</label>
+                <input id="refund-reference" formControlName="reference" class="input" placeholder="Trx ID / reference" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="label" for="refund-note">Internal note</label>
+                <input id="refund-note" formControlName="note" class="input" placeholder="Reason for refund" />
+              </div>
+              <div class="flex justify-end sm:col-span-2">
+                <button type="submit" class="btn-danger btn-sm" [disabled]="refunding()">
+                  <app-icon name="rotate-ccw" [size]="14" /> {{ refunding() ? 'Refunding…' : 'Confirm refund' }}
+                </button>
+              </div>
+            </form>
+          </section>
+        }
+
         <div class="grid gap-5 xl:grid-cols-[1.7fr_1fr]">
           <div class="space-y-5">
             <section class="admin-card overflow-x-auto">
@@ -148,8 +202,8 @@ const NEXT_STATUS: Record<string, string[]> = {
                       <th class="pl-0">Provider</th>
                       <th>Amount</th>
                       <th>Status</th>
-                      <th>Transaction</th>
-                      <th class="pr-0">Created</th>
+                      <th>Sender / Transaction</th>
+                      <th class="pr-0 text-right">Review</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -158,8 +212,27 @@ const NEXT_STATUS: Record<string, string[]> = {
                         <td class="pl-0 text-sm text-ink-800">{{ payment.provider }}</td>
                         <td class="text-sm">{{ payment.amount | money }}</td>
                         <td><span [class]="paymentClass(payment.status)">{{ payment.status }}</span></td>
-                        <td class="max-w-[180px] truncate text-xs text-ink-500">{{ payment.transactionId || '—' }}</td>
-                        <td class="pr-0 whitespace-nowrap text-xs text-ink-500">{{ payment.createdAt | date: 'MMM d, HH:mm' }}</td>
+                        <td class="text-xs text-ink-500">
+                          <p>{{ payment.senderNumber || '—' }}</p>
+                          <p class="max-w-[180px] truncate">{{ payment.transactionId || '—' }}</p>
+                          @if (payment.verifiedAt) {
+                            <p class="text-[10px] text-ink-400">Reviewed {{ payment.verifiedAt | date: 'MMM d, HH:mm' }}</p>
+                          }
+                        </td>
+                        <td class="pr-0 text-right">
+                          @if (isMobilePayment(payment) && payment.status === 'Pending') {
+                            <div class="flex justify-end gap-1.5">
+                              <button type="button" class="btn-primary btn-sm" [disabled]="verifyingId() === payment.id" (click)="approveMobile(payment)">
+                                Approve
+                              </button>
+                              <button type="button" class="btn-ghost btn-sm text-danger hover:bg-red-50" [disabled]="verifyingId() === payment.id" (click)="rejectMobile(payment)">
+                                Reject
+                              </button>
+                            </div>
+                          } @else {
+                            <span class="text-xs text-ink-400">—</span>
+                          }
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -258,11 +331,23 @@ export class AdminOrderDetail implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly updating = signal(false);
+  readonly showRefund = signal(false);
+  readonly refunding = signal(false);
+  readonly verifyingId = signal<string | null>(null);
 
   readonly statusForm = this.fb.nonNullable.group({
     status: ['', Validators.required],
     note: [''],
     trackingNumber: ['']
+  });
+
+  readonly refundForm = this.fb.nonNullable.group({
+    destination: ['Original'],
+    accountName: [''],
+    accountNumber: [''],
+    bankName: [''],
+    reference: [''],
+    note: ['']
   });
 
   readonly nextStatuses = computed(() => {
@@ -333,22 +418,96 @@ export class AdminOrderDetail implements OnInit {
     });
   }
 
-  async refund(order: Order): Promise<void> {
+  startRefund(): void {
+    this.refundForm.reset({
+      destination: 'Original',
+      accountName: '',
+      accountNumber: '',
+      bankName: '',
+      reference: '',
+      note: ''
+    });
+    this.showRefund.set(true);
+  }
+
+  cancelRefund(): void {
+    this.showRefund.set(false);
+  }
+
+  submitRefund(order: Order): void {
+    if (this.refunding()) return;
+    const value = this.refundForm.getRawValue();
+    if (value.destination !== 'Original' && value.destination !== 'Voucher' && !value.accountNumber.trim()) {
+      this.toast.error('Enter the account or mobile number for the refund destination');
+      return;
+    }
+    if (value.destination === 'BankTransfer' && !value.bankName.trim()) {
+      this.toast.error('Enter the bank name for the transfer');
+      return;
+    }
+    this.refunding.set(true);
+    this.orderService
+      .refund(order.id, {
+        destination: value.destination,
+        accountName: value.accountName || null,
+        accountNumber: value.accountNumber || null,
+        bankName: value.bankName || null,
+        reference: value.reference || null,
+        note: value.note || 'Refunded by admin'
+      })
+      .subscribe({
+        next: (updated) => {
+          this.refunding.set(false);
+          this.showRefund.set(false);
+          this.order.set(updated);
+          this.toast.success('Order refunded');
+          this.loadPayments();
+        },
+        error: (err) => {
+          this.refunding.set(false);
+          this.toast.error(err?.error?.message ?? 'Unable to refund order');
+        }
+      });
+  }
+
+  isMobilePayment(payment: Payment): boolean {
+    return payment.provider === 'bKash' || payment.provider === 'Nagad' || payment.provider === 'Rocket';
+  }
+
+  approveMobile(payment: Payment): void {
+    this.reviewMobile(payment, true);
+  }
+
+  async rejectMobile(payment: Payment): Promise<void> {
     const ok = await this.confirm.confirm({
-      title: 'Refund order',
-      message: `Refund ${order.orderNumber}? Stock will be returned to inventory and the payment marked as refunded. Provider-side refunds must be completed in the provider dashboard.`,
-      confirmText: 'Refund order',
+      title: 'Reject mobile payment',
+      message: `Reject the ${payment.provider} transaction ${payment.transactionId ?? ''}? The customer will need to submit a valid transaction.`,
+      confirmText: 'Reject payment',
       danger: true
     });
-    if (!ok) return;
-    this.orderService.refund(order.id, 'Refunded by admin').subscribe({
-      next: (updated) => {
-        this.order.set(updated);
-        this.toast.success('Order refunded');
-        this.loadPayments();
-      },
-      error: (err) => this.toast.error(err?.error?.message ?? 'Unable to refund order')
-    });
+    if (ok) this.reviewMobile(payment, false);
+  }
+
+  private reviewMobile(payment: Payment, approve: boolean): void {
+    if (this.verifyingId()) return;
+    this.verifyingId.set(payment.id);
+    this.orderService
+      .verifyMobilePayment(this.orderId, {
+        approve,
+        reference: payment.transactionId ?? null,
+        note: approve ? 'Verified by admin' : 'Rejected by admin'
+      })
+      .subscribe({
+        next: () => {
+          this.verifyingId.set(null);
+          this.toast.success(approve ? 'Mobile payment approved' : 'Mobile payment rejected');
+          this.load();
+        },
+        error: (err) => {
+          this.verifyingId.set(null);
+          this.toast.error(err?.error?.message ?? 'Unable to review payment');
+        }
+      });
   }
 
   printInvoice(download: boolean): void {

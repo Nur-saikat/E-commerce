@@ -54,8 +54,8 @@ public class OrdersController : ApiControllerBase
 
     [HttpPost("{id}/refund")]
     [HasPermission(Permissions.OrdersManage)]
-    public async Task<IActionResult> Refund(string id, [FromBody] CancelOrderRequest? request, CancellationToken ct) =>
-        Success(await _orders.RefundAsync(id, request?.Reason, ct), "Order refunded");
+    public async Task<IActionResult> Refund(string id, [FromBody] RefundRequest? request, CancellationToken ct) =>
+        Success(await _orders.RefundAsync(id, request, ct), "Order refunded");
 
     [HttpGet("{id}/payments")]
     [Authorize]

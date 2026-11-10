@@ -20,6 +20,14 @@ public class Order : BaseEntity
     public decimal Discount { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal Total { get; set; }
+    public int PointsRedeemed { get; set; }
+    public decimal PointsDiscount { get; set; }
+    public int PointsEarned { get; set; }
+    public bool PointsAwarded { get; set; }
+    public decimal RefundedAmount { get; set; }
+    public string? RefundMethod { get; set; }
+    public string? RefundReference { get; set; }
+    public DateTime? RefundedAt { get; set; }
     public string Status { get; set; } = "Pending";
     public string PaymentMethod { get; set; } = "COD";
     public string PaymentStatus { get; set; } = "Pending";
@@ -44,6 +52,7 @@ public class OrderItem
     public string? ImageUrl { get; set; }
     public string? VariantName { get; set; }
     public decimal UnitPrice { get; set; }
+    public decimal UnitCost { get; set; }
     public int Quantity { get; set; }
     public decimal LineTotal { get; set; }
 }
@@ -78,6 +87,9 @@ public class Payment : BaseEntity
     public string Status { get; set; } = "Pending";
     public string? TransactionId { get; set; }
     public string? ProviderReference { get; set; }
+    public string? SenderNumber { get; set; }
     public string? FailureReason { get; set; }
     public string? RawResponse { get; set; }
+    public DateTime? VerifiedAt { get; set; }
+    public string? VerifiedBy { get; set; }
 }

@@ -8,6 +8,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { AccountService } from '../../core/services/account.service';
 import { ContentService } from '../../core/services/content.service';
 import { ToastService } from '../../core/services/toast.service';
+import { VoucherService } from '../../core/services/voucher.service';
 import { Address, CheckoutConfig, Order, ShippingMethod } from '../../core/models/api.models';
 import { Icon, IconName } from '../../shared/components/icon/icon';
 import { EmptyState } from '../../shared/components/empty-state/empty-state';
@@ -322,11 +323,41 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
                   <dt class="text-ink-500">Tax</dt>
                   <dd class="font-medium text-ink-900">{{ taxAmount() | money }}</dd>
                 </div>
+                @if (voucherDiscount() > 0) {
+                  <div class="flex justify-between text-success">
+                    <dt>Voucher points ({{ pointsToRedeem() }})</dt>
+                    <dd class="font-medium">−{{ voucherDiscount() | money }}</dd>
+                  </div>
+                }
                 <div class="flex items-baseline justify-between border-t border-ink-200 pt-3">
                   <dt class="text-base font-semibold text-ink-900">Total</dt>
                   <dd class="text-xl font-semibold text-ink-900">{{ total() | money }}</dd>
                 </div>
               </dl>
+
+              @if (voucherEnabled() && auth.isAuthenticated()) {
+                <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-gold-200 bg-gold-50/50 p-3.5">
+                  <input
+                    type="checkbox"
+                    class="mt-0.5 h-4 w-4 rounded border-ink-300 text-ink-900 focus:ring-gold-500"
+                    [checked]="redeemPoints()"
+                    [disabled]="(wallet()?.balance ?? 0) === 0"
+                    (change)="togglePoints($event)"
+                  />
+                  <span class="min-w-0 flex-1 text-xs leading-relaxed text-ink-700">
+                    <span class="flex items-center gap-1.5 font-semibold text-ink-900">
+                      <app-icon name="gift" [size]="14" /> Redeem voucher points
+                    </span>
+                    <span class="mt-0.5 block">
+                      You have <strong>{{ wallet()?.balance ?? 0 }}</strong> points
+                      ({{ (wallet()?.balance ?? 0) | money }} value). Earn {{ config()?.voucherEarnPercent ?? 0 }}% back in points on every completed order.
+                    </span>
+                    @if (redeemPoints() && pointsToRedeem() === 0) {
+                      <span class="mt-1 block text-[11px] text-ink-500">No points can be applied to this order right now.</span>
+                    }
+                  </span>
+                </label>
+              }
 
               <label class="mt-4 flex items-start gap-2.5 text-xs leading-relaxed text-ink-600">
                 <input type="checkbox" class="mt-0.5 h-4 w-4 rounded border-ink-300 text-ink-900 focus:ring-gold-500" formControlName="terms" />
@@ -368,10 +399,12 @@ export class CheckoutPage implements OnInit {
   private readonly orders = inject(OrderService);
   private readonly account = inject(AccountService);
   private readonly content = inject(ContentService);
+  private readonly vouchers = inject(VoucherService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
   readonly addresses = this.account.addresses;
+  readonly wallet = this.vouchers.wallet;
   readonly selectedAddressId = signal<string>('new');
   readonly shippingMethods = signal<ShippingMethod[]>([]);
   readonly selectedShippingId = signal<string>('');
@@ -379,6 +412,7 @@ export class CheckoutPage implements OnInit {
   readonly loadingConfig = signal(true);
   readonly placing = signal(false);
   readonly applyingCoupon = signal(false);
+  readonly redeemPoints = signal(false);
   readonly config = signal<CheckoutConfig | null>(null);
   readonly couponControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
 
@@ -414,8 +448,47 @@ export class CheckoutPage implements OnInit {
     return Math.round((this.subtotal() - this.discount()) * rate) / 100;
   });
 
-  readonly total = computed(() =>
+  readonly totalBeforePoints = computed(() =>
     Math.round((this.subtotal() - this.discount() + this.shippingCost() + this.taxAmount()) * 100) / 100
+  );
+
+  readonly voucherEnabled = computed(() => {
+    const config = this.config();
+    return !!config?.voucherPointsEnabled && (this.wallet()?.balance ?? 0) > 0;
+  });
+
+  readonly voucherSpendable = computed(() => {
+    if (!this.redeemPoints()) return 0;
+    const config = this.config();
+    const wallet = this.wallet();
+    if (!config || !wallet || !config.voucherPointsEnabled) return 0;
+    const base = this.totalBeforePoints();
+    const percent = Math.min(100, Math.max(0, config.voucherMaxRedeemPercent ?? 100));
+    const maxByPercent = Math.round((base * percent) / 100 * 100) / 100;
+    const value = Math.min(maxByPercent, wallet.balance * (config.voucherPointValue || 1), base);
+    return Math.max(0, Math.round(value * 100) / 100);
+  });
+
+  readonly pointsToRedeem = computed(() => {
+    const config = this.config();
+    const value = config?.voucherPointValue ?? 1;
+    if (!config || value <= 0) return 0;
+    const spendable = this.voucherSpendable();
+    if (spendable <= 0) return 0;
+    const balance = this.wallet()?.balance ?? 0;
+    let points = Math.floor(spendable / value);
+    if (points < balance && points * value < spendable) points += 1;
+    return Math.min(points, balance);
+  });
+
+  readonly voucherDiscount = computed(() => {
+    const value = this.config()?.voucherPointValue ?? 1;
+    const discount = this.pointsToRedeem() * value;
+    return Math.max(0, Math.round(Math.min(this.totalBeforePoints(), discount) * 100) / 100);
+  });
+
+  readonly total = computed(() =>
+    Math.max(0, Math.round((this.totalBeforePoints() - this.voucherDiscount()) * 100) / 100)
   );
 
   ngOnInit(): void {
@@ -437,6 +510,7 @@ export class CheckoutPage implements OnInit {
         },
         error: () => undefined
       });
+      this.vouchers.loadWallet().subscribe({ error: () => undefined });
     }
 
     this.content.checkoutConfig().subscribe({
@@ -482,6 +556,10 @@ export class CheckoutPage implements OnInit {
     this.selectedShippingId.set(method.id);
   }
 
+  togglePoints(event: Event): void {
+    this.redeemPoints.set((event.target as HTMLInputElement).checked);
+  }
+
   paymentLabel(method: string): string {
     switch (method) {
       case 'COD':
@@ -490,6 +568,14 @@ export class CheckoutPage implements OnInit {
         return 'Card payment · Stripe';
       case 'SSLCommerz':
         return 'Cards, mobile banking & wallets · SSLCommerz';
+      case 'bKash':
+        return 'bKash · Mobile banking';
+      case 'Nagad':
+        return 'Nagad · Mobile banking';
+      case 'Rocket':
+        return 'Rocket · Mobile banking';
+      case 'Voucher':
+        return 'Voucher points';
       default:
         return method;
     }
@@ -503,6 +589,12 @@ export class CheckoutPage implements OnInit {
         return 'You will be redirected to Stripe to complete payment securely.';
       case 'SSLCommerz':
         return 'You will be redirected to SSLCommerz to complete payment securely.';
+      case 'bKash':
+      case 'Nagad':
+      case 'Rocket':
+        return `Send the amount to our ${method} merchant number, then submit your transaction ID for verification.`;
+      case 'Voucher':
+        return 'Pay in full with your voucher points balance.';
       default:
         return 'Secure online payment.';
     }
@@ -513,7 +605,14 @@ export class CheckoutPage implements OnInit {
       case 'COD':
         return 'wallet';
       case 'Stripe':
+      case 'SSLCommerz':
         return 'card';
+      case 'bKash':
+      case 'Nagad':
+      case 'Rocket':
+        return 'phone';
+      case 'Voucher':
+        return 'gift';
       default:
         return 'shield';
     }
@@ -568,20 +667,30 @@ export class CheckoutPage implements OnInit {
           paymentMethod: method,
           notes: value.notes?.trim() || null,
           guestEmail: this.auth.isAuthenticated() ? null : email,
-          saveAddress: this.auth.isAuthenticated() && value.saveAddress
+          saveAddress: this.auth.isAuthenticated() && value.saveAddress,
+          useVoucherPoints: this.redeemPoints()
         })
       );
 
       this.cart.reset();
       this.cart.get().subscribe({ error: () => undefined });
+      if (this.auth.isAuthenticated()) this.vouchers.loadWallet().subscribe({ error: () => undefined });
 
       if (!this.auth.isAuthenticated() && typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem(`luxe.order.${order.id}`, JSON.stringify(order));
       }
 
-      if (method === 'COD') {
-        this.toast.success('Order placed successfully');
+      if (order.paymentMethod === 'COD' || order.paymentMethod === 'Voucher') {
+        this.toast.success(
+          order.paymentMethod === 'Voucher' ? 'Order placed and paid with voucher points' : 'Order placed successfully'
+        );
         await this.router.navigate(['/order-confirmation', order.id]);
+        return;
+      }
+
+      if (['bKash', 'Nagad', 'Rocket'].includes(order.paymentMethod)) {
+        this.toast.success('Order placed. Complete your mobile payment to confirm it.');
+        await this.router.navigate(['/order-confirmation', order.id], { queryParams: { payment: 'mobile' } });
         return;
       }
 

@@ -8,6 +8,15 @@ public class AppOptions
     public string[] CorsOrigins { get; set; } = { "http://localhost:4200" };
     public long MaxUploadBytes { get; set; } = 5 * 1024 * 1024;
     public string[] AllowedImageTypes { get; set; } = { "image/jpeg", "image/png", "image/webp", "image/gif" };
+    public long MaxDocumentBytes { get; set; } = 10 * 1024 * 1024;
+    public string[] AllowedDocumentTypes { get; set; } =
+    {
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "image/jpeg",
+        "image/png"
+    };
 }
 
 public class JwtOptions

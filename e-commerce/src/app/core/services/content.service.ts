@@ -124,6 +124,13 @@ export class ContentService {
       codEnabled: true,
       stripeEnabled: false,
       sslCommerzEnabled: false,
+      bkashEnabled: false,
+      nagadEnabled: false,
+      rocketEnabled: false,
+      voucherPointsEnabled: true,
+      voucherPointValue: 1,
+      voucherEarnPercent: 5,
+      voucherMaxRedeemPercent: 100,
       socialLinks: {},
       menuItems: []
     };

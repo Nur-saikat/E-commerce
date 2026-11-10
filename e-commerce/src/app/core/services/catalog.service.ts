@@ -39,8 +39,8 @@ export class CatalogService {
     return this.api.get<ProductSummary[]>('products/by-ids', { ids: ids.join(',') });
   }
 
-  product(idOrSlug: string, includeInactive = false): Observable<ProductDetail> {
-    return this.api.get<ProductDetail>(`products/${encodeURIComponent(idOrSlug)}`, { includeInactive });
+  product(idOrSlug: string, includeInactive = false, includeCost = false): Observable<ProductDetail> {
+    return this.api.get<ProductDetail>(`products/${encodeURIComponent(idOrSlug)}`, { includeInactive, includeCost });
   }
 
   collection(kind: 'featured' | 'latest' | 'bestsellers' | 'trending' | 'deals', limit = 8): Observable<ProductSummary[]> {

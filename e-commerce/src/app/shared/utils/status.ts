@@ -53,8 +53,46 @@ export function paymentMethodLabel(method: string): string {
       return 'Card via Stripe';
     case 'SSLCommerz':
       return 'SSLCommerz';
+    case 'bKash':
+      return 'bKash';
+    case 'Nagad':
+      return 'Nagad';
+    case 'Rocket':
+      return 'Rocket';
+    case 'Voucher':
+      return 'Voucher points';
     default:
       return method;
+  }
+}
+
+export function returnStatusClass(status: string): string {
+  switch (status) {
+    case 'Requested':
+      return 'badge-warning';
+    case 'Approved':
+      return 'badge-gold';
+    case 'Received':
+      return 'bg-sky-50 text-sky-700 badge';
+    case 'Refunded':
+      return 'badge-success';
+    case 'Rejected':
+      return 'badge-danger';
+    default:
+      return 'badge-muted';
+  }
+}
+
+export function refundDestinationLabel(destination: string): string {
+  switch (destination) {
+    case 'Original':
+      return 'Original payment method';
+    case 'BankTransfer':
+      return 'Bank transfer';
+    case 'Voucher':
+      return 'Voucher points';
+    default:
+      return destination;
   }
 }
 

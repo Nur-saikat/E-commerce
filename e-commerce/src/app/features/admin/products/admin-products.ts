@@ -281,7 +281,7 @@ export class AdminProducts implements OnInit {
   private updateFlag(product: ProductSummary, field: 'isActive' | 'isFeatured'): void {
     if (this.busyId()) return;
     this.busyId.set(product.id);
-    this.catalog.product(product.id, true).subscribe({
+    this.catalog.product(product.id, true, true).subscribe({
       next: (detail) => {
         const request = this.toRequest(detail);
         request[field] = !detail[field];
@@ -313,6 +313,7 @@ export class AdminProducts implements OnInit {
       categoryId: detail.categoryId ?? '',
       brandId: detail.brandId,
       price: detail.price,
+      costPrice: detail.costPrice ?? 0,
       discountPrice: detail.discountPrice,
       stock: detail.stock,
       lowStockThreshold: detail.lowStockThreshold,

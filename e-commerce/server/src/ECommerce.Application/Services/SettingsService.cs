@@ -53,6 +53,16 @@ public class SettingsService
         settings.CodEnabled = request.CodEnabled;
         settings.StripeEnabled = request.StripeEnabled;
         settings.SslCommerzEnabled = request.SslCommerzEnabled;
+        settings.BkashEnabled = request.BkashEnabled;
+        settings.BkashMerchantNumber = request.BkashMerchantNumber;
+        settings.NagadEnabled = request.NagadEnabled;
+        settings.NagadMerchantNumber = request.NagadMerchantNumber;
+        settings.RocketEnabled = request.RocketEnabled;
+        settings.RocketMerchantNumber = request.RocketMerchantNumber;
+        settings.VoucherPointsEnabled = request.VoucherPointsEnabled;
+        settings.VoucherPointValue = request.VoucherPointValue > 0 ? request.VoucherPointValue : 1;
+        settings.VoucherEarnPercent = Math.Clamp(request.VoucherEarnPercent, 0, 100);
+        settings.VoucherMaxRedeemPercent = Math.Clamp(request.VoucherMaxRedeemPercent, 0, 100);
         settings.SocialLinks = request.SocialLinks ?? new();
         settings.FooterAbout = request.FooterAbout;
         settings.CopyrightText = request.CopyrightText;
@@ -150,6 +160,10 @@ public class SettingsService
         if (settings.CodEnabled) payments.Add(Shared.Constants.PaymentProviders.Cod);
         if (settings.StripeEnabled) payments.Add(Shared.Constants.PaymentProviders.Stripe);
         if (settings.SslCommerzEnabled) payments.Add(Shared.Constants.PaymentProviders.SslCommerz);
+        var mobileBanking = new List<MobileBankingOptionDto>();
+        AddMobileBanking(mobileBanking, payments, settings.BkashEnabled, Shared.Constants.PaymentProviders.Bkash, settings.BkashMerchantNumber);
+        AddMobileBanking(mobileBanking, payments, settings.NagadEnabled, Shared.Constants.PaymentProviders.Nagad, settings.NagadMerchantNumber);
+        AddMobileBanking(mobileBanking, payments, settings.RocketEnabled, Shared.Constants.PaymentProviders.Rocket, settings.RocketMerchantNumber);
 
         return new CheckoutConfigDto
         {
@@ -158,8 +172,26 @@ public class SettingsService
             FlatShippingRate = settings.FlatShippingRate,
             FreeShippingThreshold = settings.FreeShippingThreshold,
             EnabledPaymentMethods = payments,
+            MobileBanking = mobileBanking,
+            VoucherPointsEnabled = settings.VoucherPointsEnabled,
+            VoucherPointValue = settings.VoucherPointValue > 0 ? settings.VoucherPointValue : 1,
+            VoucherEarnPercent = settings.VoucherEarnPercent,
+            VoucherMaxRedeemPercent = settings.VoucherMaxRedeemPercent,
             Currency = settings.Currency,
             CurrencySymbol = settings.CurrencySymbol
         };
+    }
+
+    private static void AddMobileBanking(List<MobileBankingOptionDto> options, List<string> payments,
+        bool enabled, string provider, string? merchantNumber)
+    {
+        if (!enabled || string.IsNullOrWhiteSpace(merchantNumber)) return;
+        options.Add(new MobileBankingOptionDto
+        {
+            Provider = provider,
+            AccountNumber = merchantNumber.Trim(),
+            Instructions = $"Send the exact total to our {provider} merchant number, then submit the transaction ID with your sender number."
+        });
+        payments.Add(provider);
     }
 }

@@ -94,6 +94,7 @@ public class InventoryItemDto
     public int Stock { get; set; }
     public int LowStockThreshold { get; set; }
     public int TotalStock { get; set; }
+    public decimal CostPrice { get; set; }
     public string Status { get; set; } = string.Empty;
     public List<InventoryVariantDto> Variants { get; set; } = new();
 }

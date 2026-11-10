@@ -6,6 +6,9 @@ import { APP_ENV } from '../../../environments/environment';
 import { SILENT_ERROR } from '../constants';
 import {
   CheckoutRequest,
+  CreateReturnRequest,
+  MobilePaymentSubmitRequest,
+  MobilePaymentVerifyRequest,
   Order,
   OrderQuery,
   OrderSummary,
@@ -14,7 +17,11 @@ import {
   PaymentInitiateRequest,
   PaymentInitiateResponse,
   PaymentVerifyRequest,
-  PaymentVerifyResult
+  PaymentVerifyResult,
+  RefundRequest,
+  ReturnQuery,
+  ReturnRequest,
+  UpdateReturnStatusRequest
 } from '../models/api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -47,8 +54,40 @@ export class OrderService {
     return this.api.put<Order>(`orders/${id}/status`, { status, note, trackingNumber });
   }
 
-  refund(id: string, reason?: string): Observable<Order> {
-    return this.api.post<Order>(`orders/${id}/refund`, { reason, restoreStock: true });
+  refund(id: string, request: RefundRequest = {}): Observable<Order> {
+    return this.api.post<Order>(`orders/${id}/refund`, request);
+  }
+
+  submitMobilePayment(request: MobilePaymentSubmitRequest): Observable<Payment> {
+    return this.api.post<Payment>('payments/mobile/submit', request);
+  }
+
+  verifyMobilePayment(orderId: string, request: MobilePaymentVerifyRequest): Observable<Payment> {
+    return this.api.post<Payment>(`payments/mobile/${orderId}/verify`, request);
+  }
+
+  createReturn(request: CreateReturnRequest): Observable<ReturnRequest> {
+    return this.api.post<ReturnRequest>('returns', request);
+  }
+
+  myReturns(query: ReturnQuery = {}): Observable<Paged<ReturnRequest>> {
+    return this.api.getPaged<ReturnRequest>('returns/my', query as Record<string, unknown>);
+  }
+
+  returnsForOrder(orderId: string): Observable<Paged<ReturnRequest>> {
+    return this.api.getPaged<ReturnRequest>('returns/my', { orderId, page: 1, pageSize: 50 });
+  }
+
+  adminReturns(query: ReturnQuery = {}): Observable<Paged<ReturnRequest>> {
+    return this.api.getPaged<ReturnRequest>('admin/returns', query as Record<string, unknown>);
+  }
+
+  adminReturn(id: string): Observable<ReturnRequest> {
+    return this.api.get<ReturnRequest>(`admin/returns/${id}`);
+  }
+
+  updateReturn(id: string, request: UpdateReturnStatusRequest): Observable<ReturnRequest> {
+    return this.api.put<ReturnRequest>(`admin/returns/${id}/status`, request);
   }
 
   payments(orderId: string): Observable<Payment[]> {

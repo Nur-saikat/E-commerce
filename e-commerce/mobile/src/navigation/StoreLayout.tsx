@@ -8,6 +8,7 @@ import { useCart } from '../state/CartContext';
 import { useWishlist } from '../state/WishlistContext';
 import { colors, maxContentWidth, spacing } from '../theme';
 import { useRouter } from './Router';
+import { StoreFooterContext } from './StoreFooterContext';
 
 const navLinks: { label: string; route: string }[] = [
   { label: 'Home', route: 'home' },
@@ -114,65 +115,78 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
         ) : null}
       </View>
 
-      <View style={{ flex: 1, width: '100%' }}>{children}</View>
+      <StoreFooterContext.Provider value={<StoreFooter />}>
+        <View style={{ flex: 1, width: '100%' }}>{children}</View>
+      </StoreFooterContext.Provider>
+    </View>
+  );
+}
 
-      <View style={styles.footer}>
-        <View style={styles.footerInner}>
-          <View style={{ flex: 1.4, minWidth: 240, gap: spacing.sm }}>
-            <AppText variant="h3">{settings.storeName}</AppText>
-            <AppText variant="small" color={colors.faint}>
-              {settings.footerAbout ??
-                'Thoughtful essentials for the home and family, curated in Mirpur, Dhaka and delivered across Bangladesh.'}
-            </AppText>
-            {settings.address ? <AppText variant="tiny" color={colors.muted}>{settings.address}</AppText> : null}
-            {settings.phone ? <AppText variant="tiny" color={colors.muted}>Call {settings.phone}</AppText> : null}
-            {settings.email ? <AppText variant="tiny" color={colors.muted}>{settings.email}</AppText> : null}
-          </View>
+function StoreFooter() {
+  const router = useRouter();
+  const { settings } = useSettings();
 
-          <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
-            <AppText variant="label" color={colors.white}>Shop</AppText>
-            {['shop', 'wishlist', 'cart', 'track-order'].map(route => (
-              <Button
-                key={route}
-                label={{ shop: 'All products', wishlist: 'Wishlist', cart: 'Your bag', 'track-order': 'Track an order' }[route]!}
-                variant="ghost"
-                size="sm"
-                onPress={() => go(route)}
-                style={{ justifyContent: 'flex-start', paddingHorizontal: 0, height: 30 }}
-                textStyle={{ color: colors.faint }}
-              />
-            ))}
-          </View>
+  const go = (route: string) => {
+    router.navigate(route);
+  };
 
-          <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
-            <AppText variant="label" color={colors.white}>Account</AppText>
-            {[
-              { label: 'My orders', route: 'orders' },
-              { label: 'Returns', route: 'returns' },
-              { label: 'Rewards', route: 'rewards' },
-              { label: 'Contact', route: 'contact' },
-              { label: 'About', route: 'about' },
-            ].map(link => (
-              <Button
-                key={link.route}
-                label={link.label}
-                variant="ghost"
-                size="sm"
-                onPress={() => go(link.route)}
-                style={{ justifyContent: 'flex-start', paddingHorizontal: 0, height: 30 }}
-                textStyle={{ color: colors.faint }}
-              />
-            ))}
-          </View>
-        </View>
-        <View style={styles.footerBottom}>
-          <AppText variant="tiny" color={colors.muted}>
-            {settings.copyrightText ?? `© ${new Date().getFullYear()} ${settings.storeName}. All rights reserved.`}
+  return (
+    <View style={styles.footer}>
+      <View style={styles.footerInner}>
+        <View style={{ flex: 1.4, minWidth: 240, gap: spacing.sm }}>
+          <AppText variant="h3">{settings.storeName}</AppText>
+          <AppText variant="small" color={colors.faint}>
+            {settings.footerAbout ??
+              'Thoughtful essentials for the home and family, curated in Mirpur, Dhaka and delivered across Bangladesh.'}
           </AppText>
-          <AppText variant="tiny" color={colors.muted}>
-            Secure payments · Mobile banking · Cash on delivery
-          </AppText>
+          {settings.address ? <AppText variant="tiny" color={colors.muted}>{settings.address}</AppText> : null}
+          {settings.phone ? <AppText variant="tiny" color={colors.muted}>Call {settings.phone}</AppText> : null}
+          {settings.email ? <AppText variant="tiny" color={colors.muted}>{settings.email}</AppText> : null}
         </View>
+
+        <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
+          <AppText variant="label" color={colors.white}>Shop</AppText>
+          {['shop', 'wishlist', 'cart', 'track-order'].map(route => (
+            <Button
+              key={route}
+              label={{ shop: 'All products', wishlist: 'Wishlist', cart: 'Your bag', 'track-order': 'Track an order' }[route]!}
+              variant="ghost"
+              size="sm"
+              onPress={() => go(route)}
+              style={{ justifyContent: 'flex-start', paddingHorizontal: 0, height: 30 }}
+              textStyle={{ color: colors.faint }}
+            />
+          ))}
+        </View>
+
+        <View style={{ flex: 1, minWidth: 160, gap: 2 }}>
+          <AppText variant="label" color={colors.white}>Account</AppText>
+          {[
+            { label: 'My orders', route: 'orders' },
+            { label: 'Returns', route: 'returns' },
+            { label: 'Rewards', route: 'rewards' },
+            { label: 'Contact', route: 'contact' },
+            { label: 'About', route: 'about' },
+          ].map(link => (
+            <Button
+              key={link.route}
+              label={link.label}
+              variant="ghost"
+              size="sm"
+              onPress={() => go(link.route)}
+              style={{ justifyContent: 'flex-start', paddingHorizontal: 0, height: 30 }}
+              textStyle={{ color: colors.faint }}
+            />
+          ))}
+        </View>
+      </View>
+      <View style={styles.footerBottom}>
+        <AppText variant="tiny" color={colors.muted}>
+          {settings.copyrightText ?? `© ${new Date().getFullYear()} ${settings.storeName}. All rights reserved.`}
+        </AppText>
+        <AppText variant="tiny" color={colors.muted}>
+          Secure payments · Mobile banking · Cash on delivery
+        </AppText>
       </View>
     </View>
   );

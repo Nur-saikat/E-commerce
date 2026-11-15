@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from '../navigation/Router';
+import { useStoreFooter } from '../navigation/StoreFooterContext';
 import { maxContentWidth, colors, fonts, radius, shadow, spacing, statusColors, type } from '../theme';
 import { assetUrl } from '../format';
 
@@ -80,6 +81,7 @@ export function Page({
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
 }) {
+  const footer = useStoreFooter();
   const content = (
     <View
       style={[
@@ -106,9 +108,13 @@ export function Page({
           }
         >
           {content}
+          {footer}
         </ScrollView>
       ) : (
-        <View style={{ flex: 1 }}>{content}</View>
+        <View style={{ flex: 1 }}>
+          {content}
+          {footer}
+        </View>
       )}
     </SafeAreaView>
   );

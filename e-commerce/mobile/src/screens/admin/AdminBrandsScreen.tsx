@@ -15,6 +15,7 @@ import {
   TextField,
   ToggleRow,
 } from '../../components/ui';
+import { ImageUploadButton } from '../../components/ImageUploadButton';
 import { useAsync, useDocumentTitle } from '../../hooks/useAsync';
 import { useFeedback } from '../../state/FeedbackContext';
 import { colors, spacing } from '../../theme';
@@ -145,7 +146,10 @@ export function AdminBrandsScreen() {
           <TextField label="Name" value={draft.name} onChangeText={value => setDraft(prev => ({ ...prev, name: value }))} style={{ flex: 2, minWidth: 200 }} />
           <TextField label="Sort order" value={draft.sortOrder} onChangeText={value => setDraft(prev => ({ ...prev, sortOrder: value }))} keyboardType="number-pad" style={{ flex: 1, minWidth: 110 }} />
         </Toolbar>
-        <TextField label="Logo URL" value={draft.logoUrl} onChangeText={value => setDraft(prev => ({ ...prev, logoUrl: value }))} autoCapitalize="none" />
+        <Toolbar>
+          <TextField label="Logo URL" value={draft.logoUrl} onChangeText={value => setDraft(prev => ({ ...prev, logoUrl: value }))} autoCapitalize="none" style={{ flex: 1, minWidth: 240 }} />
+          <ImageUploadButton onUploaded={urls => setDraft(prev => ({ ...prev, logoUrl: urls[0] }))} />
+        </Toolbar>
         <TextField label="Description" value={draft.description} onChangeText={value => setDraft(prev => ({ ...prev, description: value }))} multiline />
         <ToggleRow label="Active" description="Inactive brands are hidden from shoppers." value={draft.isActive} onValueChange={value => setDraft(prev => ({ ...prev, isActive: value }))} />
       </ModalSheet>

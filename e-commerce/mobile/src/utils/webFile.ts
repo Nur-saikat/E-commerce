@@ -7,6 +7,7 @@ export async function pickWebFile(accept = 'image/*'): Promise<File | null> {
     input.type = 'file';
     input.accept = accept;
     input.onchange = () => resolve(input.files && input.files[0] ? input.files[0] : null);
+    input.oncancel = () => resolve(null);
     input.click();
   });
 }

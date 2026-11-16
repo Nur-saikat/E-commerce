@@ -15,6 +15,7 @@ import {
   TextField,
   ToggleRow,
 } from '../../components/ui';
+import { ImageUploadButton } from '../../components/ImageUploadButton';
 import { useAsync, useDocumentTitle } from '../../hooks/useAsync';
 import { useFeedback } from '../../state/FeedbackContext';
 import { useSettings } from '../../state/SettingsContext';
@@ -93,7 +94,10 @@ export function AdminSettingsScreen() {
           <AppText variant="h3">Store identity</AppText>
           <TextField label="Store name" value={draft.storeName} onChangeText={value => set('storeName', value)} />
           <TextField label="Tagline" value={draft.tagline ?? ''} onChangeText={value => set('tagline', value)} />
-          <TextField label="Logo URL" value={draft.logoUrl ?? ''} onChangeText={value => set('logoUrl', value)} autoCapitalize="none" />
+          <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <TextField label="Logo URL" value={draft.logoUrl ?? ''} onChangeText={value => set('logoUrl', value)} autoCapitalize="none" style={{ flex: 1, minWidth: 220 }} />
+            <ImageUploadButton onUploaded={urls => set('logoUrl', urls[0])} />
+          </View>
           <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
             <TextField label="Support email" value={draft.email ?? ''} onChangeText={value => set('email', value)} autoCapitalize="none" style={{ flex: 1, minWidth: 200 }} />
             <TextField label="Support phone" value={draft.phone ?? ''} onChangeText={value => set('phone', value)} keyboardType="phone-pad" style={{ flex: 1, minWidth: 180 }} />

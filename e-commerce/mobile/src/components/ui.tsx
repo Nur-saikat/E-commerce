@@ -535,10 +535,17 @@ export function ProductImage({
   radiusValue?: number;
 }) {
   const resolved = assetUrl(url);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const showImage = !!resolved && failedUrl !== resolved;
   return (
     <View style={[{ height, borderRadius: radiusValue, overflow: 'hidden', backgroundColor: colors.surfaceAlt }, style]}>
-      {resolved ? (
-        <Image source={{ uri: resolved }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      {showImage ? (
+        <Image
+          source={{ uri: resolved }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="cover"
+          onError={() => setFailedUrl(resolved)}
+        />
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <AppText variant="h1" color={colors.faint}>{(name ?? 'S').slice(0, 1)}</AppText>

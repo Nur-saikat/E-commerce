@@ -19,6 +19,7 @@ import {
   TextField,
   ToggleRow,
 } from '../../components/ui';
+import { ImageUploadButton } from '../../components/ImageUploadButton';
 import { dateTime } from '../../format';
 import { useAsync, useDocumentTitle } from '../../hooks/useAsync';
 import { useFeedback } from '../../state/FeedbackContext';
@@ -179,7 +180,10 @@ function BannersPanel() {
       >
         <TextField label="Title" value={draft.title} onChangeText={value => setDraft(prev => ({ ...prev, title: value }))} />
         <TextField label="Subtitle" value={draft.subtitle ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, subtitle: value }))} />
-        <TextField label="Image URL" value={draft.imageUrl ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, imageUrl: value }))} autoCapitalize="none" />
+        <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <TextField label="Image URL" value={draft.imageUrl ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, imageUrl: value }))} autoCapitalize="none" style={{ flex: 1, minWidth: 240 }} />
+          <ImageUploadButton onUploaded={urls => setDraft(prev => ({ ...prev, imageUrl: urls[0] }))} />
+        </View>
         <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
           <TextField label="Link URL" value={draft.linkUrl ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, linkUrl: value }))} autoCapitalize="none" style={{ flex: 2, minWidth: 200 }} />
           <TextField label="Button text" value={draft.buttonText ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, buttonText: value }))} style={{ flex: 1, minWidth: 140 }} />
@@ -301,7 +305,10 @@ function TestimonialsPanel() {
       >
         <TextField label="Customer name" value={draft.name} onChangeText={value => setDraft(prev => ({ ...prev, name: value }))} />
         <TextField label="Role / location" value={draft.role ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, role: value }))} />
-        <TextField label="Avatar URL" value={draft.avatarUrl ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, avatarUrl: value }))} autoCapitalize="none" />
+        <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <TextField label="Avatar URL" value={draft.avatarUrl ?? ''} onChangeText={value => setDraft(prev => ({ ...prev, avatarUrl: value }))} autoCapitalize="none" style={{ flex: 1, minWidth: 240 }} />
+          <ImageUploadButton onUploaded={urls => setDraft(prev => ({ ...prev, avatarUrl: urls[0] }))} />
+        </View>
         <TextField
           label="Rating (1–5)"
           value={String(draft.rating)}

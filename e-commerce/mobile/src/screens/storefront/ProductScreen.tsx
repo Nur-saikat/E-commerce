@@ -14,6 +14,7 @@ import {
   ErrorState,
   KeyValue,
   Page,
+  ProductImage,
   RatingStars,
   Section,
   SelectField,
@@ -99,7 +100,8 @@ export function ProductScreen() {
   }
 
   const data = product.data;
-  const images = [data.thumbnailUrl, ...(data.images ?? [])].filter(Boolean) as string[];
+  const images = [data.thumbnailUrl, ...(data.images ?? [])]
+    .filter((image): image is string => typeof image === 'string' && image.trim().length > 0);
   const uniqueImages = Array.from(new Set(images.map(image => assetUrl(image) ?? image)));
   const activeImage = uniqueImages[Math.min(imageIndex, uniqueImages.length - 1)];
   const price = selectedVariant?.price ?? data.effectivePrice;
@@ -167,13 +169,7 @@ export function ProductScreen() {
   const gallery = (
     <View style={{ gap: spacing.md }}>
       <View style={styles.mainImage}>
-        {activeImage ? (
-          <Image source={{ uri: activeImage }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-        ) : (
-          <View style={styles.imageFallback}>
-            <AppText variant="display" color={colors.faint}>{data.name.slice(0, 1)}</AppText>
-          </View>
-        )}
+        <ProductImage url={activeImage} name={data.name} height={480} radiusValue={0} />
         {discountPercent > 0 ? (
           <View style={{ position: 'absolute', top: spacing.md, left: spacing.md }}>
             <Badge label={`Save ${discountPercent}%`} tone={{ bg: colors.accent, fg: colors.white }} />
@@ -310,9 +306,9 @@ export function ProductScreen() {
   return (
     <Page gap={spacing.xxl}>
       <Button label="Back" variant="link" onPress={router.goBack} />
-      <View style={[styles.top, !wide && { flexDirection: 'column' }]}>
-        <View style={{ flex: 1.05, minWidth: 0 }}>{gallery}</View>
-        <View style={{ flex: 1, minWidth: 0 }}>{purchase}</View>
+      <View style={[styles.top, !wide && { flexDirection: 'column', alignItems: 'stretch' }]}>
+        <View style={{ flex: 1.05, minWidth: 0, alignSelf: 'stretch' }}>{gallery}</View>
+        <View style={{ flex: 1, minWidth: 0, alignSelf: 'stretch' }}>{purchase}</View>
       </View>
 
       <View style={{ gap: spacing.lg }}>
@@ -491,7 +487,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.surfaceAlt,
   },
-  imageFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   thumbRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   thumb: {
     width: 72,

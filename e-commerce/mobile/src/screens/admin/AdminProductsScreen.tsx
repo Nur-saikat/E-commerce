@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
-import { catalogApi, uploadsApi } from '../../api';
+import { StyleSheet, View } from 'react-native';
+import { catalogApi } from '../../api';
 import type { Category, ProductDetail, ProductRequest, ProductSummary, ProductVariantRequest } from '../../api/types';
 import {
   AppText,
@@ -19,11 +19,11 @@ import {
   TextField,
   ToggleRow,
 } from '../../components/ui';
+import { ImageUploadButton } from '../../components/ImageUploadButton';
 import { useAsync, useDocumentTitle } from '../../hooks/useAsync';
 import { useFeedback } from '../../state/FeedbackContext';
 import { useSettings } from '../../state/SettingsContext';
 import { colors, spacing } from '../../theme';
-import { pickWebFile } from '../../utils/webFile';
 import { AdminPage, ListHeader, Toolbar } from './AdminKit';
 
 interface VariantDraft {
@@ -98,7 +98,6 @@ export function AdminProductsScreen() {
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
 
   const taxonomy = useAsync(async () => {
     const [categories, brands] = await Promise.all([catalogApi.categories(true), catalogApi.brands(true)]);
@@ -287,26 +286,12 @@ export function AdminProductsScreen() {
     }
   };
 
-  const uploadImage = async (target: 'thumbnail' | 'gallery') => {
-    const file = await pickWebFile('image/*');
-    if (!file) {
-      if (Platform.OS !== 'web') toast('Add an image URL on this device.', 'info');
-      return;
-    }
-    setUploading(true);
-    try {
-      const result = await uploadsApi.upload(file);
-      setDraft(prev =>
-        target === 'thumbnail'
-          ? { ...prev, thumbnailUrl: result.url }
-          : { ...prev, images: [...prev.images, result.url] },
-      );
-      toast('Image uploaded.', 'success');
-    } catch (error: any) {
-      toast(error?.message ?? 'Unable to upload this image.', 'error');
-    } finally {
-      setUploading(false);
-    }
+  const applyUploadedImages = (target: 'thumbnail' | 'gallery', urls: string[]) => {
+    setDraft(prev =>
+      target === 'thumbnail'
+        ? { ...prev, thumbnailUrl: urls[0] }
+        : { ...prev, images: Array.from(new Set([...prev.images.filter(Boolean), ...urls])) },
+    );
   };
 
   const setField = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
@@ -450,9 +435,7 @@ export function AdminProductsScreen() {
               <AppText variant="h3">Media</AppText>
               <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <TextField label="Thumbnail URL" value={draft.thumbnailUrl} onChangeText={value => setField('thumbnailUrl', value)} autoCapitalize="none" style={{ flex: 2, minWidth: 240 }} />
-                {Platform.OS === 'web' ? (
-                  <Button label={uploading ? 'Uploading…' : 'Upload'} variant="outline" onPress={() => uploadImage('thumbnail')} loading={uploading} />
-                ) : null}
+                <ImageUploadButton onUploaded={urls => applyUploadedImages('thumbnail', urls)} />
                 <View style={{ width: 56 }}>
                   <ProductImage url={draft.thumbnailUrl} name={draft.name} height={56} radiusValue={10} />
                 </View>
@@ -478,9 +461,12 @@ export function AdminProductsScreen() {
                   size="sm"
                   onPress={() => setField('images', [...draft.images, ''])}
                 />
-                {Platform.OS === 'web' ? (
-                  <Button label="Upload gallery image" variant="outline" size="sm" onPress={() => uploadImage('gallery')} loading={uploading} />
-                ) : null}
+                <ImageUploadButton
+                  multiple
+                  size="sm"
+                  label="Browse images"
+                  onUploaded={urls => applyUploadedImages('gallery', urls)}
+                />
               </View>
               {draft.images.map((image, index) =>
                 image === '' ? (
@@ -563,6 +549,10 @@ export function AdminProductsScreen() {
                       style={{ flex: 2, minWidth: 220 }}
                     />
                     <TextField label="Image URL" value={variant.imageUrl} onChangeText={value => setField('variants', draft.variants.map((item, i) => (i === index ? { ...item, imageUrl: value } : item)))} autoCapitalize="none" style={{ flex: 1, minWidth: 180 }} />
+                    <ImageUploadButton
+                      size="sm"
+                      onUploaded={urls => setField('variants', draft.variants.map((item, i) => (i === index ? { ...item, imageUrl: urls[0] } : item)))}
+                    />
                     <Button label="Remove" variant="ghost" size="sm" onPress={() => setField('variants', draft.variants.filter((_, i) => i !== index))} textStyle={{ color: colors.danger }} />
                   </View>
                 </Card>

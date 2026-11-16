@@ -29,6 +29,7 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const wide = width >= 960;
+  const compact = width < 480;
 
   const go = (route: string) => {
     setMenuOpen(false);
@@ -61,9 +62,9 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
       </View>
 
       <View style={styles.header}>
-        <View style={styles.headerInner}>
+        <View style={[styles.headerInner, compact ? styles.headerInnerCompact : null]}>
           <Pressable onPress={() => go('home')} style={styles.brand} accessibilityRole="link" accessibilityLabel="Safwan Shop home">
-            <AppText variant="h2" style={{ letterSpacing: -0.5 }}>{settings.storeName}</AppText>
+            <AppText variant="h2" style={compact ? styles.brandTitleCompact : undefined}>{settings.storeName}</AppText>
             <AppText variant="tiny" color={colors.faint} style={{ letterSpacing: 2, textTransform: 'uppercase' }}>
               Mirpur · Dhaka
             </AppText>
@@ -83,15 +84,15 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
             </View>
           ) : null}
 
-          <View style={styles.actions}>
-            {!wide ? (
+          <View style={[styles.actions, compact ? styles.actionsCompact : null]}>
+            {!wide && !compact ? (
               <IconButton label="Search" glyph="⌕" onPress={() => go('shop')} />
             ) : null}
-            <IconButton label="Wishlist" glyph="♡" badge={user ? wishlist.items.length : 0} onPress={() => go('wishlist')} />
-            <IconButton label="Cart" glyph="⛊" badge={cart.count} onPress={() => go('cart')} />
-            <IconButton label={user ? 'Account' : 'Sign in'} glyph="☺" onPress={() => go(user ? 'account' : 'login')} />
-            {isStaff ? <IconButton label="Admin" glyph="⚙" onPress={() => go('admin')} /> : null}
-            {!wide ? <IconButton label="Menu" glyph="☰" onPress={() => setMenuOpen(open => !open)} /> : null}
+            <IconButton label="Wishlist" glyph="♡" badge={user ? wishlist.items.length : 0} small={compact} onPress={() => go('wishlist')} />
+            <IconButton label="Cart" glyph="⛊" badge={cart.count} small={compact} onPress={() => go('cart')} />
+            <IconButton label={user ? 'Account' : 'Sign in'} glyph="☺" small={compact} onPress={() => go(user ? 'account' : 'login')} />
+            {isStaff ? <IconButton label="Admin" glyph="⚙" small={compact} onPress={() => go('admin')} /> : null}
+            {!wide ? <IconButton label="Menu" glyph="☰" small={compact} onPress={() => setMenuOpen(open => !open)} /> : null}
           </View>
         </View>
 
@@ -197,18 +198,20 @@ function IconButton({
   glyph,
   badge,
   onPress,
+  small,
 }: {
   label: string;
   glyph: string;
   badge?: number;
   onPress: () => void;
+  small?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.65 }]}
+      style={({ pressed }) => [styles.iconButton, small ? styles.iconButtonSmall : null, pressed && { opacity: 0.65 }]}
     >
       <AppText variant="title" color={colors.ink}>{glyph}</AppText>
       {badge && badge > 0 ? (
@@ -253,9 +256,15 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     flexWrap: 'wrap',
   },
+  headerInnerCompact: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+  },
   brand: { gap: 0, cursor: 'pointer' as any },
+  brandTitleCompact: { fontSize: 20, lineHeight: 24 },
   nav: { flexDirection: 'row', alignItems: 'center', gap: 2, flex: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginLeft: 'auto' },
+  actionsCompact: { gap: 2 },
   iconButton: {
     width: 40,
     height: 40,
@@ -263,6 +272,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer' as any,
+  },
+  iconButtonSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   badgeDot: {
     position: 'absolute',

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, DOCUMENT, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { NavigationStart, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Subject, catchError, debounceTime, distinctUntilChanged, filter, of, switchMap, takeUntil } from 'rxjs';
@@ -28,13 +28,15 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
     </div>
 
     <header class="sticky top-0 z-50 border-b border-ink-100 bg-cream/95 backdrop-blur-md">
-      <div class="container-luxe flex h-[70px] items-center justify-between gap-4">
+      <div class="container-luxe flex h-[70px] items-center justify-between gap-2 sm:gap-4">
         <div class="flex items-center gap-2">
           <button
             type="button"
-            class="flex h-10 w-10 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 lg:hidden"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 sm:h-10 sm:w-10 lg:hidden"
             (click)="mobileOpen.set(true)"
             aria-label="Open menu"
+            aria-controls="mobile-menu"
+            [attr.aria-expanded]="mobileOpen()"
           >
             <app-icon name="menu" [size]="21" />
           </button>
@@ -43,7 +45,7 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
             @if (settings()?.logoUrl) {
               <img [src]="settings()!.logoUrl | assetUrl" alt="Safwan" class="h-8 w-auto" />
             } @else {
-              <span class="font-display text-[26px] font-semibold leading-none tracking-[0.16em] text-ink-950">SAFWAN</span>
+              <span class="font-display text-[21px] font-semibold leading-none tracking-[0.12em] text-ink-950 sm:text-[26px] sm:tracking-[0.16em]">SAFWAN</span>
               <span class="h-1.5 w-1.5 rounded-full bg-gold-500 transition-transform group-hover:scale-125"></span>
             }
           </a>
@@ -67,10 +69,10 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
           </a>
         </nav>
 
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-0.5 sm:gap-1">
           <button
             type="button"
-            class="flex h-10 w-10 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 lg:hidden"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 sm:h-10 sm:w-10 lg:hidden"
             (click)="toggleSearch()"
             aria-label="Search"
           >
@@ -126,7 +128,7 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
 
           <a
             routerLink="/wishlist"
-            class="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5"
+            class="relative hidden h-9 w-9 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 min-[360px]:flex sm:h-10 sm:w-10"
             aria-label="Wishlist"
           >
             <app-icon name="heart" [size]="20" />
@@ -140,7 +142,7 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
           <div class="relative">
             <button
               type="button"
-              class="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5"
+              class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 sm:h-10 sm:w-10"
               (click)="accountOpen.set(!accountOpen())"
               aria-label="Account menu"
             >
@@ -182,7 +184,7 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
 
           <a
             routerLink="/cart"
-            class="relative flex h-10 w-10 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5"
+            class="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-800 transition hover:bg-ink-900/5 sm:h-10 sm:w-10"
             aria-label="Shopping bag"
           >
             <app-icon name="bag" [size]="20" />
@@ -224,56 +226,59 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
         </div>
       }
 
-      @if (mobileOpen()) {
-        <div class="fixed inset-0 z-[80] lg:hidden">
-          <div class="absolute inset-0 bg-ink-950/50 backdrop-blur-sm" (click)="mobileOpen.set(false)"></div>
-          <aside class="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col overflow-y-auto bg-cream p-5 shadow-2xl">
-            <div class="flex items-center justify-between">
-              <span class="font-display text-xl font-semibold tracking-[0.16em] text-ink-950">SAFWAN</span>
-              <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full hover:bg-ink-900/5" (click)="mobileOpen.set(false)" aria-label="Close menu">
-                <app-icon name="x" [size]="20" />
-              </button>
-            </div>
-            <nav class="mt-6 space-y-1" aria-label="Mobile">
-              <a routerLink="/products" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm font-medium text-ink-800 hover:bg-white">Shop all</a>
-              @for (category of categories(); track category.id) {
-                <a [routerLink]="['/category', category.slug]" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-ink-700 hover:bg-white">
-                  {{ category.name }}
-                </a>
-              }
-              <a routerLink="/products" [queryParams]="{ onSale: true }" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm font-medium text-danger hover:bg-white">Sale</a>
-              <a routerLink="/track-order" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-ink-700 hover:bg-white">Track your order</a>
-            </nav>
-            <div class="mt-6 border-t border-ink-200 pt-4">
-              @if (auth.isAuthenticated()) {
-                <div class="flex items-center gap-3 rounded-xl bg-white p-3">
-                  <span class="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-xs font-semibold text-cream">
-                    {{ auth.fullName().slice(0, 1) }}
-                  </span>
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium text-ink-900">{{ auth.fullName() }}</p>
-                    <p class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</p>
-                  </div>
-                </div>
-                <a routerLink="/account" (click)="mobileOpen.set(false)" class="btn-outline btn-sm mt-3 w-full">My account</a>
-                @if (auth.isAdmin()) {
-                  <a routerLink="/admin" (click)="mobileOpen.set(false)" class="btn-gold btn-sm mt-2 w-full">Admin dashboard</a>
-                }
-                <button type="button" class="btn-ghost btn-sm mt-2 w-full" (click)="logout()">Sign out</button>
-              } @else {
-                <a routerLink="/login" (click)="mobileOpen.set(false)" class="btn-primary w-full">Sign in</a>
-                <a routerLink="/register" (click)="mobileOpen.set(false)" class="btn-outline btn-sm mt-2 w-full">Create account</a>
-              }
-            </div>
-          </aside>
-        </div>
-      }
     </header>
+
+    @if (mobileOpen()) {
+      <div id="mobile-menu" class="fixed inset-0 z-[80] lg:hidden">
+        <div class="absolute inset-0 bg-ink-950/50 backdrop-blur-sm" (click)="mobileOpen.set(false)"></div>
+        <aside class="absolute inset-y-0 left-0 flex w-[86%] max-w-sm flex-col overflow-y-auto overscroll-contain bg-cream p-5 shadow-2xl">
+          <div class="flex items-center justify-between">
+            <span class="font-display text-xl font-semibold tracking-[0.16em] text-ink-950">SAFWAN</span>
+            <button type="button" class="flex h-9 w-9 items-center justify-center rounded-full hover:bg-ink-900/5" (click)="mobileOpen.set(false)" aria-label="Close menu">
+              <app-icon name="x" [size]="20" />
+            </button>
+          </div>
+          <nav class="mt-6 space-y-1" aria-label="Mobile">
+            <a routerLink="/products" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm font-medium text-ink-800 hover:bg-white">Shop all</a>
+            @for (category of categories(); track category.id) {
+              <a [routerLink]="['/category', category.slug]" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-ink-700 hover:bg-white">
+                {{ category.name }}
+              </a>
+            }
+            <a routerLink="/products" [queryParams]="{ onSale: true }" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm font-medium text-danger hover:bg-white">Sale</a>
+            <a routerLink="/wishlist" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-ink-700 hover:bg-white">Wishlist</a>
+            <a routerLink="/track-order" (click)="mobileOpen.set(false)" class="block rounded-xl px-3 py-2.5 text-sm text-ink-700 hover:bg-white">Track your order</a>
+          </nav>
+          <div class="mt-6 border-t border-ink-200 pt-4">
+            @if (auth.isAuthenticated()) {
+              <div class="flex items-center gap-3 rounded-xl bg-white p-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-xs font-semibold text-cream">
+                  {{ auth.fullName().slice(0, 1) }}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-ink-900">{{ auth.fullName() }}</p>
+                  <p class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</p>
+                </div>
+              </div>
+              <a routerLink="/account" (click)="mobileOpen.set(false)" class="btn-outline btn-sm mt-3 w-full">My account</a>
+              @if (auth.isAdmin()) {
+                <a routerLink="/admin" (click)="mobileOpen.set(false)" class="btn-gold btn-sm mt-2 w-full">Admin dashboard</a>
+              }
+              <button type="button" class="btn-ghost btn-sm mt-2 w-full" (click)="logout()">Sign out</button>
+            } @else {
+              <a routerLink="/login" (click)="mobileOpen.set(false)" class="btn-primary w-full">Sign in</a>
+              <a routerLink="/register" (click)="mobileOpen.set(false)" class="btn-outline btn-sm mt-2 w-full">Create account</a>
+            }
+          </div>
+        </aside>
+      </div>
+    }
   `
 })
 export class SiteHeader implements OnInit, OnDestroy {
   private readonly catalog = inject(CatalogService);
   private readonly router = inject(Router);
+  private readonly document = inject(DOCUMENT);
   readonly content = inject(ContentService);
   readonly cart = inject(CartService);
   readonly wishlist = inject(WishlistService);
@@ -290,6 +295,17 @@ export class SiteHeader implements OnInit, OnDestroy {
   readonly searchControl = new FormControl('', { nonNullable: true });
 
   private readonly destroy$ = new Subject<void>();
+
+  constructor() {
+    effect((onCleanup) => {
+      const body = this.document.body;
+      const previous = body.style.overflow;
+      body.style.overflow = this.mobileOpen() ? 'hidden' : previous;
+      onCleanup(() => {
+        body.style.overflow = previous;
+      });
+    });
+  }
 
   ngOnInit(): void {
     this.content.loadSettings().subscribe({ error: () => undefined });

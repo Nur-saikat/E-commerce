@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using ECommerce.Application.Common;
 using ECommerce.Application.Common.Interfaces;
 using ECommerce.Application.Common.Options;
@@ -32,36 +33,97 @@ public class AuthService
         _appOptions = appOptions.Value;
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request, string? ip, CancellationToken ct = default)
+    private const int OtpExpiryMinutes = 10;
+    private const int OtpResendSeconds = 60;
+    private const int OtpMaxAttempts = 5;
+
+    public async Task<OtpChallengeResponse> RequestRegistrationOtpAsync(RegisterRequest request, CancellationToken ct = default)
     {
         var email = request.Email.Trim().ToLowerInvariant();
         if (await _uow.Users.FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted, ct) is not null)
             throw new ConflictException("An account with this email already exists");
 
-        var user = new User
-        {
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            Email = email,
-            Phone = request.Phone,
-            PasswordHash = _hasher.Hash(request.Password),
-            Role = AppRoles.Customer,
-            Permissions = new List<string>(),
-            EmailVerificationToken = StringExtensions.RandomToken(),
-            EmailVerificationExpiresAt = DateTime.UtcNow.AddDays(2)
-        };
-        await _uow.Users.AddAsync(user, ct);
+        var pending = await _uow.RegistrationOtps.FirstOrDefaultAsync(o => o.Email == email, ct);
+        if (pending is not null && pending.UpdatedAt > DateTime.UtcNow.AddSeconds(-OtpResendSeconds))
+            throw new BadRequestException($"Please wait {OtpResendSeconds} seconds before requesting another code");
+
+        var now = DateTime.UtcNow;
+        var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var otp = pending ?? new RegistrationOtp { Email = email };
+        otp.CodeHash = code.ToSha256();
+        otp.ExpiresAt = now.AddMinutes(OtpExpiryMinutes);
+        otp.Attempts = 0;
+        otp.FirstName = request.FirstName.Trim();
+        otp.LastName = request.LastName.Trim();
+        otp.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+        otp.PasswordHash = _hasher.Hash(request.Password);
+        otp.UpdatedAt = now;
+
+        if (pending is null) await _uow.RegistrationOtps.AddAsync(otp, ct);
+        else await _uow.RegistrationOtps.UpdateAsync(otp, ct);
 
         try
         {
-            var verifyUrl = $"{_appOptions.FrontendBaseUrl}/verify-email?token={user.EmailVerificationToken}";
-            await _email.SendAsync(email, "Verify your email",
-                $"<p>Welcome! Please verify your email by visiting <a href=\"{verifyUrl}\">{verifyUrl}</a>.</p>", ct);
+            await _email.SendAsync(email, "Your Safwan verification code",
+                $"<p>Use this code to finish creating your Safwan account:</p>" +
+                $"<p style=\"font-size:26px;font-weight:700;letter-spacing:8px\">{code}</p>" +
+                $"<p>The code expires in {OtpExpiryMinutes} minutes.</p>", ct);
         }
         catch
         {
-            // Email delivery must not block registration.
+            // Email delivery must not block sign-up; the code can be resent.
         }
+
+        return new OtpChallengeResponse
+        {
+            Email = email,
+            ExpiresInSeconds = OtpExpiryMinutes * 60,
+            ResendAfterSeconds = OtpResendSeconds,
+            Otp = _appOptions.ExposeOtp ? code : null
+        };
+    }
+
+    public async Task<AuthResponse> VerifyRegistrationOtpAsync(VerifyRegistrationRequest request, string? ip, CancellationToken ct = default)
+    {
+        var email = request.Email.Trim().ToLowerInvariant();
+        var otp = await _uow.RegistrationOtps.FirstOrDefaultAsync(o => o.Email == email, ct)
+            ?? throw new BadRequestException("No pending registration for this email. Please request a new code.");
+
+        if (otp.ExpiresAt < DateTime.UtcNow)
+        {
+            await _uow.RegistrationOtps.Collection.DeleteOneAsync(o => o.Id == otp.Id, ct);
+            throw new BadRequestException("This code has expired. Please request a new one.");
+        }
+
+        if (!string.Equals(otp.CodeHash, request.Code.Trim().ToSha256(), StringComparison.Ordinal))
+        {
+            otp.Attempts += 1;
+            otp.UpdatedAt = DateTime.UtcNow;
+            await _uow.RegistrationOtps.UpdateAsync(otp, ct);
+            if (otp.Attempts >= OtpMaxAttempts)
+            {
+                await _uow.RegistrationOtps.Collection.DeleteOneAsync(o => o.Id == otp.Id, ct);
+                throw new BadRequestException("Too many incorrect codes. Please request a new one.");
+            }
+            throw new BadRequestException("That code is incorrect. Please try again.");
+        }
+
+        if (await _uow.Users.FirstOrDefaultAsync(u => u.Email == email && !u.IsDeleted, ct) is not null)
+            throw new ConflictException("An account with this email already exists");
+
+        var user = new User
+        {
+            FirstName = otp.FirstName,
+            LastName = otp.LastName,
+            Email = email,
+            Phone = otp.Phone,
+            PasswordHash = otp.PasswordHash,
+            Role = AppRoles.Customer,
+            Permissions = new List<string>(),
+            EmailVerified = true
+        };
+        await _uow.Users.AddAsync(user, ct);
+        await _uow.RegistrationOtps.Collection.DeleteOneAsync(o => o.Id == otp.Id, ct);
 
         return await IssueTokensAsync(user, ip, ct);
     }

@@ -23,7 +23,16 @@ public class AuthController : ApiControllerBase
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
-        var response = await _auth.RegisterAsync(request, IpAddress, ct);
+        var response = await _auth.RequestRegistrationOtpAsync(request, ct);
+        return Success(response, "Verification code sent");
+    }
+
+    [HttpPost("register/verify")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> VerifyRegistration([FromBody] VerifyRegistrationRequest request, CancellationToken ct)
+    {
+        var response = await _auth.VerifyRegistrationOtpAsync(request, IpAddress, ct);
         return Success(response, "Account created successfully");
     }
 

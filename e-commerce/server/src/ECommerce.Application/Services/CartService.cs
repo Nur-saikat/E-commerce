@@ -38,16 +38,11 @@ public class CartService
         var product = await _uow.Products.FirstOrDefaultAsync(p => p.Id == productId && !p.IsDeleted && p.IsActive, ct)
             ?? throw new NotFoundException("Product not found");
 
-        ObjectId? variantId = null;
         ProductVariant? variant = null;
-        if (!string.IsNullOrWhiteSpace(request.VariantId))
-        {
-            if (!ObjectId.TryParse(request.VariantId, out var vid))
-                throw new BadRequestException("Invalid variant");
-            variant = product.Variants.FirstOrDefault(v => v.Id == vid)
-                ?? throw new NotFoundException("Product variant not found");
-            variantId = vid;
-        }
+        if (ObjectId.TryParse(request.VariantId, out var requestedVariantId))
+            variant = product.Variants.FirstOrDefault(v => v.Id == requestedVariantId);
+        variant ??= product.Variants.FirstOrDefault(v => v.Stock > 0) ?? product.Variants.FirstOrDefault();
+        var variantId = variant?.Id;
 
         var stock = variant?.Stock ?? product.Stock;
         if (stock <= 0) throw new BadRequestException("This product is out of stock");

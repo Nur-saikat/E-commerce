@@ -170,6 +170,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             </AppText>
           </Pressable>
           <View style={styles.topbarActions}>
+            <Avatar name={user.fullName} url={user.avatarUrl} size={30} />
             <Badge label={user.role} tone={{ bg: colors.primarySoft, fg: colors.primaryDark }} />
             <Button label="View store" variant="ghost" size="sm" onPress={() => router.navigate('home')} />
             <Button

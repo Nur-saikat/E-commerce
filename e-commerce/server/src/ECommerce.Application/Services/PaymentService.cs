@@ -282,6 +282,7 @@ public class PaymentService
             Note = $"{providerName} payment submitted · transaction {transactionId} · awaiting verification",
             ChangedBy = _currentUser.Email ?? order.CustomerEmail
         });
+        order.PaymentStatus = PaymentStatus.AwaitingVerification;
         order.UpdatedAt = DateTime.UtcNow;
         await _uow.Orders.UpdateAsync(order, ct);
 

@@ -9,6 +9,11 @@ public static class Mappers
     public static string Id(this ObjectId id) => id.ToString();
     public static string? Id(this ObjectId? id) => id?.ToString();
 
+    private static string? PickThumbnail(string? thumbnailUrl, List<string> images) =>
+        !string.IsNullOrWhiteSpace(thumbnailUrl)
+            ? thumbnailUrl
+            : images.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i));
+
     public static UserDto ToDto(this User user) => new()
     {
         Id = user.Id.ToString(),
@@ -58,7 +63,7 @@ public static class Mappers
         Name = p.Name,
         Slug = p.Slug,
         Sku = p.Sku,
-        ThumbnailUrl = p.ThumbnailUrl ?? p.Images.FirstOrDefault(),
+        ThumbnailUrl = PickThumbnail(p.ThumbnailUrl, p.Images),
         Price = p.Price,
         DiscountPrice = p.DiscountPrice,
         EffectivePrice = p.EffectivePrice,
@@ -84,7 +89,7 @@ public static class Mappers
         Name = p.Name,
         Slug = p.Slug,
         Sku = p.Sku,
-        ThumbnailUrl = p.ThumbnailUrl ?? p.Images.FirstOrDefault(),
+        ThumbnailUrl = PickThumbnail(p.ThumbnailUrl, p.Images),
         Price = p.Price,
         DiscountPrice = p.DiscountPrice,
         EffectivePrice = p.EffectivePrice,
@@ -104,7 +109,7 @@ public static class Mappers
         CreatedAt = p.CreatedAt,
         ShortDescription = p.ShortDescription,
         Description = p.Description,
-        Images = p.Images,
+        Images = p.Images.Where(i => !string.IsNullOrWhiteSpace(i)).ToList(),
         Specifications = p.Specifications,
         Variants = p.Variants.Select(v => new ProductVariantDto
         {

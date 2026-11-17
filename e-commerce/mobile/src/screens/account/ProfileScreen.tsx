@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { authApi } from '../../api';
+import { ImageUploadButton } from '../../components/ImageUploadButton';
 import { RequireAuth } from '../../components/RequireAuth';
 import {
   AlertBox,
@@ -36,6 +37,22 @@ function ProfileContent() {
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '');
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const saveAvatar = async (url: string) => {
+    setAvatarUrl(url);
+    try {
+      const updated = await authApi.updateProfile({
+        firstName: user?.firstName ?? firstName.trim(),
+        lastName: user?.lastName ?? lastName.trim(),
+        phone: user?.phone ?? (phone.trim() || null),
+        avatarUrl: url,
+      });
+      updateUser(updated);
+      toast('Profile photo updated.', 'success');
+    } catch (error: any) {
+      toast(error?.message ?? 'Unable to save your photo.', 'error');
+    }
+  };
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -93,7 +110,17 @@ function ProfileContent() {
 
       <Card style={{ padding: spacing.xl, gap: spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg, flexWrap: 'wrap' }}>
-          <Avatar name={user?.fullName ?? user?.email} url={avatarUrl || user?.avatarUrl} size={64} />
+          <View style={{ alignItems: 'center', gap: spacing.sm }}>
+            <Avatar name={user?.fullName ?? user?.email} url={avatarUrl || user?.avatarUrl} size={72} />
+            <ImageUploadButton
+              purpose="avatar"
+              size="sm"
+              label="Change photo"
+              onUploaded={urls => {
+                if (urls[0]) void saveAvatar(urls[0]);
+              }}
+            />
+          </View>
           <View style={{ flex: 1, minWidth: 200, gap: 4 }}>
             <AppText variant="h3">{user?.fullName}</AppText>
             <AppText variant="small" color={colors.muted}>{user?.email}</AppText>
@@ -112,8 +139,6 @@ function ProfileContent() {
         <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
           <TextField label="First name" value={firstName} onChangeText={setFirstName} style={{ flex: 1, minWidth: 200 }} />
           <TextField label="Last name" value={lastName} onChangeText={setLastName} style={{ flex: 1, minWidth: 200 }} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' }}>
           <TextField
             label="Phone number"
             value={phone}
@@ -121,14 +146,6 @@ function ProfileContent() {
             keyboardType="phone-pad"
             placeholder="01xxxxxxxxx"
             style={{ flex: 1, minWidth: 200 }}
-          />
-          <TextField
-            label="Avatar image URL (optional)"
-            value={avatarUrl}
-            onChangeText={setAvatarUrl}
-            placeholder="https://…"
-            autoCapitalize="none"
-            style={{ flex: 1, minWidth: 220 }}
           />
         </View>
         <TextField label="Email address" value={user?.email ?? ''} editable={false} helper="Contact support to change your sign-in email." />

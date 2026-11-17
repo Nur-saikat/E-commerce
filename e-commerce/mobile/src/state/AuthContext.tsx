@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { authApi } from '../api';
 import { clearSession, onSessionChange, setTokens } from '../api/client';
 import { ApiError } from '../api/client';
-import type { User } from '../api/types';
+import type { OtpChallenge, User } from '../api/types';
 import { STORAGE_KEYS } from '../config';
 import { storage } from '../storage';
 
@@ -12,13 +12,14 @@ interface AuthValue {
   busy: boolean;
   isStaff: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (input: {
+  requestRegistrationOtp: (input: {
     firstName: string;
     lastName: string;
     email: string;
     password: string;
     phone?: string;
-  }) => Promise<User>;
+  }) => Promise<OtpChallenge>;
+  verifyRegistration: (email: string, code: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (user: User) => void;
@@ -119,11 +120,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [persistTokens, persistUser],
   );
 
-  const register = useCallback(
+  const requestRegistrationOtp = useCallback(
     async (input: { firstName: string; lastName: string; email: string; password: string; phone?: string }) => {
       setBusy(true);
       try {
-        const response = await authApi.register({ ...input, email: input.email.trim() });
+        return await authApi.requestRegistrationOtp({ ...input, email: input.email.trim() });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [],
+  );
+
+  const verifyRegistration = useCallback(
+    async (email: string, code: string) => {
+      setBusy(true);
+      try {
+        const response = await authApi.verifyRegistration(email.trim(), code.trim());
         await persistTokens(response.accessToken, response.refreshToken);
         await persistUser(response.user);
         return response.user;
@@ -177,13 +190,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       busy,
       isStaff: !!user && staffRoles.has(user.role),
       login,
-      register,
+      requestRegistrationOtp,
+      verifyRegistration,
       logout,
       refreshUser,
       updateUser,
       hasPermission,
     }),
-    [user, ready, busy, login, register, logout, refreshUser, updateUser, hasPermission],
+    [user, ready, busy, login, requestRegistrationOtp, verifyRegistration, logout, refreshUser, updateUser, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

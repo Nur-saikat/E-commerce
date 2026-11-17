@@ -82,18 +82,21 @@ function extractErrors(payload: any): string[] {
 }
 
 async function refreshSession(): Promise<boolean> {
-  if (!refreshToken) return false;
+  const usedToken = refreshToken;
+  if (!usedToken) return false;
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          body: JSON.stringify({ refreshToken: usedToken }),
         });
         if (!response.ok) return false;
         const payload = (await response.json()) as ApiEnvelope<{ accessToken: string; refreshToken: string }>;
         if (!payload?.data?.accessToken) return false;
+        // a sign-out or sign-in happened while this refresh was in flight, so drop its result
+        if (refreshToken !== usedToken) return false;
         setTokens(payload.data.accessToken, payload.data.refreshToken);
         notifySession(payload.data);
         return true;

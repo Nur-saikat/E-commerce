@@ -4,11 +4,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Icon } from '../../shared/components/icon/icon';
+import { AssetUrlPipe } from '../../shared/pipes/asset-url.pipe';
 
 @Component({
   selector: 'app-account-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, Icon],
+  imports: [ReactiveFormsModule, Icon, AssetUrlPipe],
   template: `
     <div class="space-y-6">
       <section class="rounded-2xl border border-ink-100 bg-white p-5 sm:p-6">
@@ -16,14 +17,36 @@ import { Icon } from '../../shared/components/icon/icon';
         <p class="mt-0.5 text-xs text-ink-500">Update the contact information linked to your account.</p>
 
         <div class="mt-4 flex items-center gap-4 rounded-xl bg-cream p-4">
-          <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink-900 font-display text-lg font-semibold text-cream">
-            {{ initials() }}
-          </span>
+          <button
+            type="button"
+            class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ink-900 font-display text-lg font-semibold text-cream disabled:opacity-70"
+            [disabled]="uploadingAvatar()"
+            (click)="avatarInput.click()"
+            title="Change profile photo"
+          >
+            @if (auth.user()?.avatarUrl) {
+              <img [src]="auth.user()?.avatarUrl | assetUrl" [alt]="auth.fullName()" class="h-full w-full object-cover" />
+            } @else {
+              <span>{{ initials() }}</span>
+            }
+            @if (uploadingAvatar()) {
+              <span class="absolute inset-0 flex items-center justify-center bg-ink-900/60 text-[10px] font-medium uppercase tracking-wide text-cream">…</span>
+            }
+          </button>
           <div>
             <p class="text-sm font-semibold text-ink-900">{{ auth.fullName() }}</p>
             <p class="text-xs text-ink-500">{{ auth.user()?.email }}</p>
             <p class="mt-1 text-[10px] uppercase tracking-wider text-gold-600">{{ auth.user()?.role }} member</p>
+            <button
+              type="button"
+              class="mt-1.5 text-[11px] font-semibold text-ink-700 underline underline-offset-2 hover:text-ink-900 disabled:opacity-60"
+              [disabled]="uploadingAvatar()"
+              (click)="avatarInput.click()"
+            >
+              {{ uploadingAvatar() ? 'Uploading…' : 'Change photo' }}
+            </button>
           </div>
+          <input #avatarInput type="file" accept="image/*" class="hidden" (change)="onAvatarSelected($event)" />
         </div>
 
         <form class="mt-5 space-y-4" [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
@@ -117,6 +140,7 @@ export class AccountProfile implements OnInit {
 
   readonly savingProfile = signal(false);
   readonly savingPassword = signal(false);
+  readonly uploadingAvatar = signal(false);
   readonly passwordError = signal<string | null>(null);
 
   readonly profileForm = new FormGroup({
@@ -162,6 +186,34 @@ export class AccountProfile implements OnInit {
     const user = this.auth.user();
     if (!user) return 'L';
     return `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'L';
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const user = this.auth.user();
+    if (!user) return;
+    this.uploadingAvatar.set(true);
+    this.auth.uploadAvatar(file).subscribe({
+      next: ({ url }) =>
+        this.auth
+          .updateProfile({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phone: user.phone ?? null,
+            avatarUrl: url
+          })
+          .subscribe({
+            next: () => {
+              this.toast.success('Profile photo updated');
+              this.uploadingAvatar.set(false);
+            },
+            error: () => this.uploadingAvatar.set(false)
+          }),
+      error: () => this.uploadingAvatar.set(false)
+    });
   }
 
   saveProfile(): void {

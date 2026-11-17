@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, Button, SearchInput } from '../components/ui';
+import { assetUrl } from '../format';
 import { useSettings } from '../state/SettingsContext';
 import { useAuth } from '../state/AuthContext';
 import { useCart } from '../state/CartContext';
@@ -90,7 +91,26 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
             ) : null}
             <IconButton label="Wishlist" glyph="♡" badge={user ? wishlist.items.length : 0} small={compact} onPress={() => go('wishlist')} />
             <IconButton label="Cart" glyph="⛊" badge={cart.count} small={compact} onPress={() => go('cart')} />
-            <IconButton label={user ? 'Account' : 'Sign in'} glyph="☺" small={compact} onPress={() => go(user ? 'account' : 'login')} />
+            {user?.avatarUrl ? (
+              <Pressable
+                onPress={() => go('account')}
+                accessibilityRole="button"
+                accessibilityLabel="Account"
+                style={({ pressed }) => [
+                  styles.avatarButton,
+                  compact ? styles.avatarButtonSmall : null,
+                  pressed && { opacity: 0.65 },
+                ]}
+              >
+                <Image
+                  source={{ uri: assetUrl(user.avatarUrl) ?? undefined }}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            ) : (
+              <IconButton label={user ? 'Account' : 'Sign in'} glyph="☺" small={compact} onPress={() => go(user ? 'account' : 'login')} />
+            )}
             {isStaff ? <IconButton label="Admin" glyph="⚙" small={compact} onPress={() => go('admin')} /> : null}
             {!wide ? <IconButton label="Menu" glyph="☰" small={compact} onPress={() => setMenuOpen(open => !open)} /> : null}
           </View>
@@ -278,6 +298,20 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: colors.border,
+    cursor: 'pointer' as any,
+  },
+  avatarButtonSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  avatarImage: { width: '100%', height: '100%' },
   badgeDot: {
     position: 'absolute',
     top: 2,

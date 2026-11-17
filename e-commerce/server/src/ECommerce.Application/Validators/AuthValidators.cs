@@ -18,6 +18,15 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
     }
 }
 
+public class VerifyRegistrationRequestValidator : AbstractValidator<VerifyRegistrationRequest>
+{
+    public VerifyRegistrationRequestValidator()
+    {
+        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(200);
+        RuleFor(x => x.Code).NotEmpty().Length(6).Matches("^[0-9]{6}$").WithMessage("Enter the 6-digit code");
+    }
+}
+
 public class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()

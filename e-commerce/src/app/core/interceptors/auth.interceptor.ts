@@ -5,12 +5,20 @@ import { APP_ENV } from '../../../environments/environment';
 import { STORAGE_KEYS } from '../constants';
 import { AuthService } from '../services/auth.service';
 
+const PUBLIC_AUTH_PATHS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/refresh-token'
+];
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const env = inject(APP_ENV);
   const injector = inject(Injector);
   if (!req.url.startsWith(env.apiBaseUrl)) return next(req);
 
-  const isAuthEndpoint = req.url.includes('/auth/');
+  const isPublicAuth = PUBLIC_AUTH_PATHS.some((path) => req.url.includes(path));
   const auth = injector.get(AuthService);
   const token = auth.accessToken();
 
@@ -19,16 +27,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const cartId = localStorage.getItem(STORAGE_KEYS.cartId);
     if (cartId) headers = headers.set('X-Cart-Id', cartId);
   }
-  if (token && !isAuthEndpoint) headers = headers.set('Authorization', `Bearer ${token}`);
+  if (token && !isPublicAuth) headers = headers.set('Authorization', `Bearer ${token}`);
 
   return next(req.clone({ headers })).pipe(
     catchError((error: unknown) => {
       if (
         !(error instanceof HttpErrorResponse) ||
         error.status !== 401 ||
-        isAuthEndpoint ||
-        !token ||
-        req.url.includes('/auth/refresh-token')
+        isPublicAuth ||
+        !token
       ) {
         return throwError(() => error);
       }

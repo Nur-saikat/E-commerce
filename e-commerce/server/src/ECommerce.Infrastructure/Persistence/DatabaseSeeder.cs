@@ -75,15 +75,15 @@ public class DatabaseSeeder
         if (!current.BkashEnabled && string.IsNullOrWhiteSpace(current.BkashMerchantNumber))
             updates.Add(Builders<WebsiteSettings>.Update
                 .Set(s => s.BkashEnabled, true)
-                .Set(s => s.BkashMerchantNumber, "01700000000"));
+                .Set(s => s.BkashMerchantNumber, "+8801636261058"));
         if (!current.NagadEnabled && string.IsNullOrWhiteSpace(current.NagadMerchantNumber))
             updates.Add(Builders<WebsiteSettings>.Update
                 .Set(s => s.NagadEnabled, true)
-                .Set(s => s.NagadMerchantNumber, "01700000000"));
+                .Set(s => s.NagadMerchantNumber, "+8801636261058"));
         if (!current.RocketEnabled && string.IsNullOrWhiteSpace(current.RocketMerchantNumber))
             updates.Add(Builders<WebsiteSettings>.Update
                 .Set(s => s.RocketEnabled, true)
-                .Set(s => s.RocketMerchantNumber, "01700000000"));
+                .Set(s => s.RocketMerchantNumber, "+8801636261058"));
         if (updates.Count == 0) return;
 
         updates.Add(Builders<WebsiteSettings>.Update
@@ -413,7 +413,7 @@ public class DatabaseSeeder
                 UserId = customer.Id,
                 CustomerName = customer.FullName,
                 CustomerEmail = customer.Email,
-                CustomerPhone = customer.Phone ?? "01700000000",
+                CustomerPhone = customer.Phone ?? "+8801636261058",
                 Items = new List<OrderItem>
                 {
                     new()
@@ -431,7 +431,7 @@ public class DatabaseSeeder
                 ShippingAddress = new AddressSnapshot
                 {
                     FullName = customer.FullName,
-                    Phone = customer.Phone ?? "01700000000",
+                    Phone = customer.Phone ?? "+8801636261058",
                     Street = "House 12, Road 5, Mirpur",
                     City = "Dhaka",
                     State = "Dhaka",
@@ -512,19 +512,19 @@ public class DatabaseSeeder
         {
             FirstName = "Avery",
             LastName = "Stone",
-            Email = "admin@luxe.store",
+            Email = "admin@safwan.store",
             PasswordHash = _passwordHasher.Hash("Admin@12345"),
             Role = AppRoles.SuperAdmin,
             Permissions = roles[AppRoles.SuperAdmin].Permissions,
             EmailVerified = true,
-            Phone = "01700000000",
+            Phone = "+8801636261058",
             IsActive = true
         };
         var manager = new User
         {
             FirstName = "Jordan",
             LastName = "Reed",
-            Email = "manager@luxe.store",
+            Email = "manager@safwan.store",
             PasswordHash = _passwordHasher.Hash("Manager@12345"),
             Role = AppRoles.Manager,
             Permissions = roles[AppRoles.Manager].Permissions,
@@ -535,12 +535,12 @@ public class DatabaseSeeder
         {
             FirstName = "Casey",
             LastName = "Morgan",
-            Email = "customer@luxe.store",
+            Email = "customer@safwan.store",
             PasswordHash = _passwordHasher.Hash("Customer@12345"),
             Role = AppRoles.Customer,
             Permissions = new List<string>(),
             EmailVerified = true,
-            Phone = "01700000000",
+            Phone = "+8801636261058",
             IsActive = true
         };
         await collection.InsertManyAsync(new[] { admin, manager, customer }, cancellationToken: ct);
@@ -560,10 +560,10 @@ public class DatabaseSeeder
             StoreName = "Safwan",
             Tagline = "Curated essentials for modern living",
             Email = "hello@safwan.store",
-            Phone = "01700000000",
+            Phone = "+8801636261058",
             Address = "Mirpur, Dhaka, Bangladesh",
-            Currency = "USD",
-            CurrencySymbol = "$",
+            Currency = "BDT",
+            CurrencySymbol = "TK",
             TaxRate = 5,
             FlatShippingRate = 10,
             FreeShippingThreshold = 150,
@@ -571,11 +571,11 @@ public class DatabaseSeeder
             StripeEnabled = false,
             SslCommerzEnabled = false,
             BkashEnabled = true,
-            BkashMerchantNumber = "01700000000",
+            BkashMerchantNumber = "+8801636261058",
             NagadEnabled = true,
-            NagadMerchantNumber = "01700000000",
+            NagadMerchantNumber = "+8801636261058",
             RocketEnabled = true,
-            RocketMerchantNumber = "01700000000",
+            RocketMerchantNumber = "+8801636261058",
             VoucherPointsEnabled = true,
             VoucherPointValue = 1,
             VoucherEarnPercent = 5,
@@ -1026,12 +1026,12 @@ public class DatabaseSeeder
                 UserId = customer.Id,
                 CustomerName = customer.FullName,
                 CustomerEmail = customer.Email,
-                CustomerPhone = customer.Phone ?? "01700000000",
+                CustomerPhone = customer.Phone ?? "+8801636261058",
                 Items = items,
                 ShippingAddress = new AddressSnapshot
                 {
                     FullName = customer.FullName,
-                    Phone = customer.Phone ?? "01700000000",
+                    Phone = customer.Phone ?? "+8801636261058",
                     Street = "House 12, Road 5, Mirpur",
                     City = "Dhaka",
                     State = "Dhaka",
@@ -1110,7 +1110,7 @@ public class DatabaseSeeder
         {
             UserId = customer.Id.ToString(),
             FullName = customer.FullName,
-            Phone = customer.Phone ?? "01700000000",
+            Phone = customer.Phone ?? "+8801636261058",
             Street = "House 12, Road 5, Mirpur",
             City = "Dhaka",
             State = "Dhaka",

@@ -153,6 +153,11 @@ public class MongoIndexInitializer
                 Builders<ReturnRequest>.IndexKeys.Descending(r => r.CreatedAt)))
         }, ct);
 
+        await CreateAsync<RegistrationOtp>("RegistrationOtps", new[]
+        {
+            Model<RegistrationOtp>(Builders<RegistrationOtp>.IndexKeys.Ascending(o => o.Email), unique: true)
+        }, ct);
+
         _logger.LogInformation("MongoDB indexes initialized");
     }
 

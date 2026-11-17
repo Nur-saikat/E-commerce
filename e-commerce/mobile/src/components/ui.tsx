@@ -672,7 +672,7 @@ export function Tabs({
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.tabs, style]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={[styles.tabs, style]}>
       {tabs.map(tab => {
         const selected = tab.key === active;
         return (
@@ -967,7 +967,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingTop: spacing.md,
   },
-  tabs: { gap: spacing.sm, paddingBottom: 2 },
+  tabsScroll: { flexGrow: 0 },
+  tabs: { gap: spacing.sm, paddingBottom: 2, alignItems: 'flex-start' },
   tab: {
     paddingHorizontal: spacing.lg,
     paddingVertical: 9,

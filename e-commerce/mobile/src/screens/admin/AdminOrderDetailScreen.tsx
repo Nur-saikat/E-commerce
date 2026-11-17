@@ -80,6 +80,15 @@ export function AdminOrderDetailScreen() {
   }
   const data = order.data;
 
+  const mobileBankingProviders = ['bkash', 'nagad', 'rocket'];
+  const pendingMobilePayment = (payments.data ?? []).find(
+    payment =>
+      payment.status === 'Pending' &&
+      !!payment.transactionId &&
+      mobileBankingProviders.includes((payment.provider ?? '').toLowerCase()),
+  );
+  const awaitingMobileVerification = !!pendingMobilePayment || data.paymentStatus === 'AwaitingVerification';
+
   const openStatus = () => {
     setStatus(data.status);
     setNote('');
@@ -183,11 +192,17 @@ export function AdminOrderDetailScreen() {
         </View>
       }
     >
-      {data.paymentStatus === 'AwaitingVerification' ? (
+      {awaitingMobileVerification ? (
         <AlertBox
           tone="warning"
           title="Mobile banking payment awaiting verification"
-          message="Confirm the transaction with the provider before approving it."
+          message={
+            pendingMobilePayment
+              ? `${pendingMobilePayment.provider} transaction ${pendingMobilePayment.transactionId}${
+                  pendingMobilePayment.senderNumber ? ` from ${pendingMobilePayment.senderNumber}` : ''
+                } is waiting for your review.`
+              : 'Confirm the transaction with the provider before approving it.'
+          }
         />
       ) : null}
       {data.status === 'Cancelled' ? (
@@ -199,9 +214,9 @@ export function AdminOrderDetailScreen() {
       <Card style={{ padding: spacing.xl, gap: spacing.md }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' }}>
           <AppText variant="h3">Payments</AppText>
-          {data.paymentStatus === 'AwaitingVerification' ? (
+          {awaitingMobileVerification ? (
             <Button
-              label="Verify mobile payment"
+              label="Review mobile payment"
               size="sm"
               onPress={() => {
                 setVerifyApprove(true);

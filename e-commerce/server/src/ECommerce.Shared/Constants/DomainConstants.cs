@@ -84,6 +84,7 @@ public static class OrderStatus
 public static class PaymentStatus
 {
     public const string Pending = "Pending";
+    public const string AwaitingVerification = "AwaitingVerification";
     public const string Paid = "Paid";
     public const string Failed = "Failed";
     public const string Refunded = "Refunded";

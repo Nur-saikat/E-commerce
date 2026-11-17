@@ -135,13 +135,14 @@ export function CheckoutScreen() {
       : 0;
   const tax = round2((summary.subtotal - summary.discount) * (checkoutConfig?.taxRate ?? 0) / 100);
   const totalBeforePoints = round2(summary.subtotal - summary.discount + shippingCost + tax);
-  const maxPointsDiscount =
-    usePoints && wallet.data && checkoutConfig
+  const pointsDiscountAvailable =
+    wallet.data && checkoutConfig
       ? Math.min(
           round2(totalBeforePoints * Math.min(checkoutConfig.voucherMaxRedeemPercent, 100) / 100),
           round2(wallet.data.balance * (checkoutConfig.voucherPointValue || 1)),
         )
       : 0;
+  const maxPointsDiscount = usePoints ? pointsDiscountAvailable : 0;
   const estimatedTotal = round2(Math.max(totalBeforePoints - maxPointsDiscount, 0));
 
   const paymentOptions = useMemo(
@@ -281,8 +282,8 @@ export function CheckoutScreen() {
     <Page gap={spacing.xl}>
       <PageHeader back title="Checkout" subtitle="A few details and your order is on its way." />
       {error ? <AlertBox tone="danger" message={error} /> : null}
-      <View style={[styles.layout, !wide && { flexDirection: 'column' }]}>
-        <View style={{ flex: 1.35, gap: spacing.lg, minWidth: 0 }}>
+      <View style={[styles.layout, !wide && { flexDirection: 'column', alignItems: 'stretch' }]}>
+        <View style={{ flex: wide ? 1.35 : undefined, width: wide ? undefined : '100%', gap: spacing.lg, minWidth: 0 }}>
           {savedAddresses.length ? (
             <Card style={{ padding: spacing.lg, gap: spacing.sm }}>
               <AppText variant="h3">Deliver to a saved address</AppText>
@@ -467,7 +468,7 @@ export function CheckoutScreen() {
                 <View style={{ flex: 1 }}>
                   <AppText variant="title">Use voucher points</AppText>
                   <AppText variant="tiny" color={colors.muted}>
-                    Balance {wallet.data?.balance ?? 0} points · worth up to {fmt(maxPointsDiscount)}
+                    Balance {wallet.data?.balance ?? 0} points · worth up to {fmt(pointsDiscountAvailable)}
                   </AppText>
                 </View>
                 {wallet.data ? <Badge label={`${wallet.data.balance} pts`} /> : null}
@@ -495,7 +496,7 @@ export function CheckoutScreen() {
           </Card>
         </View>
 
-        <View style={{ flex: 0.85, gap: spacing.md, minWidth: 280 }}>
+        <View style={{ flex: wide ? 0.85 : undefined, width: wide ? undefined : '100%', gap: spacing.md, minWidth: wide ? 280 : 0 }}>
           <Card style={{ padding: spacing.xl, gap: spacing.md }}>
             <AppText variant="h3">Your order</AppText>
             <View style={{ gap: spacing.md, maxHeight: 340 }}>

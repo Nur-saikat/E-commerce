@@ -146,7 +146,15 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
               (click)="accountOpen.set(!accountOpen())"
               aria-label="Account menu"
             >
-              <app-icon name="user" [size]="20" />
+              @if (auth.isAuthenticated() && auth.user()?.avatarUrl) {
+                <img
+                  [src]="auth.user()?.avatarUrl | assetUrl"
+                  [alt]="auth.fullName()"
+                  class="h-full w-full rounded-full object-cover"
+                />
+              } @else {
+                <app-icon name="user" [size]="20" />
+              }
               @if (auth.isAuthenticated() && unreadCount() > 0) {
                 <span class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-cream bg-danger"></span>
               }
@@ -154,9 +162,18 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
             @if (accountOpen()) {
               <div class="absolute right-0 top-12 w-60 overflow-hidden rounded-2xl border border-ink-100 bg-white p-2 shadow-[var(--shadow-luxe)]">
                 @if (auth.isAuthenticated()) {
-                  <div class="border-b border-ink-100 px-3 pb-2.5 pt-1.5">
-                    <p class="truncate text-sm font-semibold text-ink-900">{{ auth.fullName() }}</p>
-                    <p class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</p>
+                  <div class="flex items-center gap-2.5 border-b border-ink-100 px-3 pb-2.5 pt-1.5">
+                    @if (auth.user()?.avatarUrl) {
+                      <img [src]="auth.user()?.avatarUrl | assetUrl" [alt]="auth.fullName()" class="h-9 w-9 shrink-0 rounded-full object-cover" />
+                    } @else {
+                      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xs font-semibold text-cream">
+                        {{ auth.fullName().slice(0, 1) }}
+                      </span>
+                    }
+                    <div class="min-w-0">
+                      <p class="truncate text-sm font-semibold text-ink-900">{{ auth.fullName() }}</p>
+                      <p class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</p>
+                    </div>
                   </div>
                   <a routerLink="/account" (click)="accountOpen.set(false)" class="mt-1 block rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-50">My account</a>
                   <a routerLink="/account/orders" (click)="accountOpen.set(false)" class="block rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-ink-50">Orders & tracking</a>
@@ -252,9 +269,13 @@ import { MoneyPipe } from '../../shared/pipes/money.pipe';
           <div class="mt-6 border-t border-ink-200 pt-4">
             @if (auth.isAuthenticated()) {
               <div class="flex items-center gap-3 rounded-xl bg-white p-3">
-                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900 text-xs font-semibold text-cream">
-                  {{ auth.fullName().slice(0, 1) }}
-                </span>
+                @if (auth.user()?.avatarUrl) {
+                  <img [src]="auth.user()?.avatarUrl | assetUrl" [alt]="auth.fullName()" class="h-9 w-9 shrink-0 rounded-full object-cover" />
+                } @else {
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink-900 text-xs font-semibold text-cream">
+                    {{ auth.fullName().slice(0, 1) }}
+                  </span>
+                }
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-sm font-medium text-ink-900">{{ auth.fullName() }}</p>
                   <p class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</p>

@@ -48,6 +48,13 @@ export interface ForgotPasswordResponse {
   resetUrl?: string | null;
 }
 
+export interface OtpChallenge {
+  email: string;
+  expiresInSeconds: number;
+  resendAfterSeconds: number;
+  otp?: string | null;
+}
+
 export interface Category {
   id: string;
   name: string;

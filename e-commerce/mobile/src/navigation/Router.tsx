@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { BackHandler, Platform } from 'react-native';
 
 export type RouteParams = Record<string, string>;
 export interface RouteState {
@@ -216,6 +216,16 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
     }
     setStack(prev => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, [stack.length]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (stack.length <= 1) return false;
+      goBack();
+      return true;
+    });
+    return () => sub.remove();
+  }, [stack.length, goBack]);
 
   const value = useMemo<RouterValue>(
     () => ({ route, stack, navigate, replace, reset, goBack, canGoBack: stack.length > 1 }),

@@ -497,6 +497,8 @@ public class CatalogService
         if (await _uow.Products.FirstOrDefaultAsync(p => p.Sku == request.Sku && !p.IsDeleted, ct) is not null)
             throw new ConflictException("A product with this SKU already exists");
 
+        var images = CleanImages(request.Images);
+
         var product = new Product
         {
             Name = request.Name.Trim(),
@@ -511,8 +513,8 @@ public class CatalogService
             DiscountPrice = request.DiscountPrice,
             Stock = request.Stock,
             LowStockThreshold = request.LowStockThreshold,
-            Images = request.Images,
-            ThumbnailUrl = request.ThumbnailUrl ?? request.Images.FirstOrDefault(),
+            Images = images,
+            ThumbnailUrl = CleanImageUrl(request.ThumbnailUrl) ?? images.FirstOrDefault(),
             Specifications = request.Specifications ?? new(),
             Variants = MapVariants(request.Variants),
             Tags = request.Tags,
@@ -581,8 +583,9 @@ public class CatalogService
         product.DiscountPrice = request.DiscountPrice;
         product.Stock = request.Stock;
         product.LowStockThreshold = request.LowStockThreshold;
-        product.Images = request.Images;
-        product.ThumbnailUrl = request.ThumbnailUrl ?? request.Images.FirstOrDefault();
+        var images = CleanImages(request.Images);
+        product.Images = images;
+        product.ThumbnailUrl = CleanImageUrl(request.ThumbnailUrl) ?? images.FirstOrDefault();
         product.Specifications = request.Specifications ?? new();
         product.Variants = MapVariants(request.Variants);
         product.Tags = request.Tags;
@@ -672,6 +675,16 @@ public class CatalogService
             Attributes = v.Attributes ?? new(),
             ImageUrl = v.ImageUrl
         }).ToList();
+
+    private static string? CleanImageUrl(string? url) => string.IsNullOrWhiteSpace(url) ? null : url.Trim();
+
+    private static List<string> CleanImages(IEnumerable<string>? images) =>
+        (images ?? Array.Empty<string>())
+            .Select(CleanImageUrl)
+            .Where(url => url is not null)
+            .Select(url => url!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     private static BsonDocument EffectivePriceExpression() => new("$cond", new BsonArray
     {

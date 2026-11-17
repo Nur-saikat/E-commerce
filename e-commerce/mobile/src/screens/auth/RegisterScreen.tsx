@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AppText, AlertBox, Button, TextField } from '../../components/ui';
 import { useDocumentTitle } from '../../hooks/useAsync';
@@ -10,7 +10,7 @@ import { AuthShell } from './AuthShell';
 
 export function RegisterScreen() {
   useDocumentTitle('Create account');
-  const { register, busy } = useAuth();
+  const { requestRegistrationOtp, verifyRegistration, busy } = useAuth();
   const router = useRouter();
   const { toast } = useFeedback();
   const [form, setForm] = useState({
@@ -21,12 +21,20 @@ export function RegisterScreen() {
     password: '',
     confirm: '',
   });
+  const [step, setStep] = useState<'details' | 'verify'>('details');
+  const [code, setCode] = useState('');
+  const [resendIn, setResendIn] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const set = (key: keyof typeof form) => (value: string) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const submit = async () => {
-    setError(null);
+  useEffect(() => {
+    if (step !== 'verify' || resendIn <= 0) return;
+    const timer = setInterval(() => setResendIn(value => Math.max(0, value - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [step, resendIn]);
+
+  const validateDetails = () => {
     const next: Record<string, string> = {};
     if (!form.firstName.trim()) next.firstName = 'First name is required.';
     if (!form.lastName.trim()) next.lastName = 'Last name is required.';
@@ -35,26 +43,90 @@ export function RegisterScreen() {
     if (form.password.length < 8) next.password = 'Use at least 8 characters.';
     if (form.confirm !== form.password) next.confirm = 'Passwords do not match.';
     setFieldErrors(next);
-    if (Object.keys(next).length) return;
+    return Object.keys(next).length === 0;
+  };
+
+  const sendCode = async () => {
+    setError(null);
+    if (!validateDetails()) return;
     try {
-      const user = await register({
+      const challenge = await requestRegistrationOtp({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim() || undefined,
         password: form.password,
       });
+      setStep('verify');
+      setCode('');
+      setResendIn(challenge.resendAfterSeconds);
+      if (challenge.otp) toast(`Development code: ${challenge.otp}`, 'info');
+    } catch (err: any) {
+      setError(err?.message ?? 'Unable to send the verification code.');
+    }
+  };
+
+  const verify = async () => {
+    setError(null);
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError('Enter the 6-digit code from your email.');
+      return;
+    }
+    try {
+      const user = await verifyRegistration(form.email, code);
       toast(`Welcome to Safwan, ${user.firstName}.`, 'success');
       router.reset('home');
     } catch (err: any) {
-      setError(err?.message ?? 'Unable to create your account.');
+      setError(err?.message ?? 'Unable to verify that code.');
     }
   };
+
+  const editDetails = () => {
+    setStep('details');
+    setCode('');
+    setError(null);
+  };
+
+  if (step === 'verify') {
+    return (
+      <AuthShell
+        title="Verify your email"
+        subtitle={`Enter the 6-digit code we sent to ${form.email.trim()}. Your account is created once the code is confirmed.`}
+        footer={
+          <AppText variant="small" color={colors.muted}>
+            Wrong email?{' '}
+            <AppText variant="small" weight="600" color={colors.primary} onPress={editDetails}>
+              Edit your details
+            </AppText>
+          </AppText>
+        }
+      >
+        {error ? <AlertBox tone="danger" message={error} /> : null}
+        <TextField
+          label="Verification code"
+          value={code}
+          onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="123456"
+          keyboardType="number-pad"
+          maxLength={6}
+          autoFocus
+        />
+        <Button label="Verify & create account" onPress={verify} loading={busy} full size="lg" />
+        <Button
+          label={resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+          variant="outline"
+          onPress={sendCode}
+          disabled={busy || resendIn > 0}
+          full
+        />
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Save favourites, track orders and earn voucher points."
+      subtitle="We'll email you a 6-digit code to confirm your address."
       footer={
         <AppText variant="small" color={colors.muted}>
           Already have an account?{' '}
@@ -104,9 +176,9 @@ export function RegisterScreen() {
         placeholder="Repeat your password"
         secureTextEntry
         error={fieldErrors.confirm}
-        onSubmitEditing={submit}
+        onSubmitEditing={sendCode}
       />
-      <Button label="Create account" onPress={submit} loading={busy} full size="lg" />
+      <Button label="Send verification code" onPress={sendCode} loading={busy} full size="lg" />
     </AuthShell>
   );
 }

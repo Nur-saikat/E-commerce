@@ -11,11 +11,13 @@ interface Props {
   label?: string;
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
+  purpose?: 'admin' | 'avatar';
 }
 
-export function ImageUploadButton({ onUploaded, multiple = false, label, size = 'md', style }: Props) {
+export function ImageUploadButton({ onUploaded, multiple = false, label, size = 'md', style, purpose = 'admin' }: Props) {
   const { toast } = useFeedback();
   const [uploading, setUploading] = useState(false);
+  const uploadFile = purpose === 'avatar' ? uploadsApi.uploadAvatar : uploadsApi.upload;
 
   const upload = async (source: ImageSource) => {
     try {
@@ -24,7 +26,7 @@ export function ImageUploadButton({ onUploaded, multiple = false, label, size = 
       setUploading(true);
       const urls: string[] = [];
       for (const file of files) {
-        const uploaded = await uploadsApi.upload(file);
+        const uploaded = await uploadFile(file);
         urls.push(uploaded.url);
       }
       onUploaded(urls);

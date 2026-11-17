@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ContentService } from '../../core/services/content.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Icon, IconName } from '../../shared/components/icon/icon';
+import { AssetUrlPipe } from '../../shared/pipes/asset-url.pipe';
 
 interface NavItem {
   label: string;
@@ -22,7 +23,7 @@ interface NavGroup {
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, AssetUrlPipe],
   template: `
     <div class="min-h-screen bg-ink-50/70">
       <aside
@@ -65,9 +66,13 @@ interface NavGroup {
 
         <div class="border-t border-cream/10 p-4">
           <div class="flex items-center gap-3 rounded-xl bg-cream/5 p-3">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-gold-500 text-xs font-bold text-ink-950">
-              {{ initials() }}
-            </span>
+            @if (auth.user()?.avatarUrl) {
+              <img [src]="auth.user()?.avatarUrl | assetUrl" [alt]="auth.fullName()" class="h-9 w-9 shrink-0 rounded-full object-cover" />
+            } @else {
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500 text-xs font-bold text-ink-950">
+                {{ initials() }}
+              </span>
+            }
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium text-cream">{{ auth.fullName() }}</p>
               <p class="truncate text-[11px] text-cream/45">{{ auth.user()?.role }}</p>
@@ -102,7 +107,11 @@ interface NavGroup {
               <app-icon name="external-link" [size]="14" /> Storefront
             </a>
             <div class="flex items-center gap-2 rounded-lg bg-ink-50 px-3 py-2">
-              <span class="flex h-7 w-7 items-center justify-center rounded-full bg-ink-900 text-[10px] font-bold text-cream">{{ initials() }}</span>
+              @if (auth.user()?.avatarUrl) {
+                <img [src]="auth.user()?.avatarUrl | assetUrl" [alt]="auth.fullName()" class="h-7 w-7 shrink-0 rounded-full object-cover" />
+              } @else {
+                <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-900 text-[10px] font-bold text-cream">{{ initials() }}</span>
+              }
               <span class="hidden text-xs font-medium text-ink-700 sm:inline">{{ auth.user()?.role }}</span>
             </div>
           </div>
@@ -183,6 +192,7 @@ export class AdminLayout implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.content.loadSettings().subscribe({ error: () => undefined });
+    if (this.auth.isAuthenticated()) this.auth.me().subscribe({ error: () => undefined });
     this.subscription = this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe(() => {
       this.title.set(this.resolveTitle());
     });

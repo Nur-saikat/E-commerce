@@ -36,4 +36,5 @@ public interface IUnitOfWork
     IMongoRepository<VoucherWallet> VoucherWallets { get; }
     IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
     IMongoRepository<ReturnRequest> ReturnRequests { get; }
+    IMongoRepository<RegistrationOtp> RegistrationOtps { get; }
 }

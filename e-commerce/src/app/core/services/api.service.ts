@@ -79,10 +79,18 @@ export class ApiService {
   }
 
   upload(file: File, silent = false): Observable<{ url: string; fileName: string; size: number }> {
+    return this.postFile('uploads', file, silent);
+  }
+
+  uploadAvatar(file: File, silent = false): Observable<{ url: string; fileName: string; size: number }> {
+    return this.postFile('uploads/avatar', file, silent);
+  }
+
+  private postFile(path: string, file: File, silent: boolean): Observable<{ url: string; fileName: string; size: number }> {
     const form = new FormData();
     form.append('file', file);
     return this.http
-      .post<ApiResponse<{ url: string; fileName: string; size: number }>>(`${this.baseUrl}/uploads`, form, {
+      .post<ApiResponse<{ url: string; fileName: string; size: number }>>(`${this.baseUrl}/${path}`, form, {
         context: this.context(silent)
       })
       .pipe(map((res) => res.data));

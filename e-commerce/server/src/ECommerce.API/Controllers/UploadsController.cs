@@ -37,6 +37,17 @@ public class UploadsController : ApiControllerBase
     {
         if (!UploadPermissions.Any(_currentUser.HasPermission))
             throw new ForbiddenException("You do not have permission to upload files");
+
+        return Success(await SaveImageAsync(file, ct), "Image uploaded");
+    }
+
+    [HttpPost("avatar")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file, CancellationToken ct) =>
+        Success(await SaveImageAsync(file, ct), "Image uploaded");
+
+    private async Task<UploadResultDto> SaveImageAsync(IFormFile? file, CancellationToken ct)
+    {
         if (file is null || file.Length == 0)
             throw new BadRequestException("Please choose a file to upload");
         if (file.Length > _options.MaxUploadBytes)
@@ -47,11 +58,11 @@ public class UploadsController : ApiControllerBase
         await using var stream = file.OpenReadStream();
         var url = await _storage.SaveAsync(stream, file.FileName, file.ContentType, ct);
 
-        return Success(new UploadResultDto
+        return new UploadResultDto
         {
             Url = url,
             FileName = Path.GetFileName(url),
             Size = file.Length
-        }, "Image uploaded");
+        };
     }
 }

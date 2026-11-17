@@ -40,6 +40,7 @@ public class UnitOfWork : IUnitOfWork
         VoucherWallets = new MongoRepository<VoucherWallet>(database, "VoucherWallets");
         VoucherTransactions = new MongoRepository<VoucherTransaction>(database, "VoucherTransactions");
         ReturnRequests = new MongoRepository<ReturnRequest>(database, "ReturnRequests");
+        RegistrationOtps = new MongoRepository<RegistrationOtp>(database, "RegistrationOtps");
     }
 
     public IMongoRepository<User> Users { get; }
@@ -74,4 +75,5 @@ public class UnitOfWork : IUnitOfWork
     public IMongoRepository<VoucherWallet> VoucherWallets { get; }
     public IMongoRepository<VoucherTransaction> VoucherTransactions { get; }
     public IMongoRepository<ReturnRequest> ReturnRequests { get; }
+    public IMongoRepository<RegistrationOtp> RegistrationOtps { get; }
 }

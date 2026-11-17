@@ -9,6 +9,7 @@ import {
   ChangePasswordRequest,
   ForgotPasswordResponse,
   LoginRequest,
+  OtpChallenge,
   RegisterRequest,
   ResetPasswordRequest,
   UpdateProfileRequest,
@@ -64,9 +65,16 @@ export class AuthService {
     );
   }
 
-  register(request: RegisterRequest): Observable<AuthResponse> {
+  requestRegistrationOtp(request: RegisterRequest): Observable<OtpChallenge> {
     this.loading.set(true);
-    return this.api.post<AuthResponse>('auth/register', request).pipe(
+    return this.api
+      .post<OtpChallenge>('auth/register', request)
+      .pipe(finalize(() => this.loading.set(false)));
+  }
+
+  verifyRegistration(email: string, code: string): Observable<AuthResponse> {
+    this.loading.set(true);
+    return this.api.post<AuthResponse>('auth/register/verify', { email, code }).pipe(
       tap((res) => {
         this.persist(res);
         this.cart.mergeGuestCart();
@@ -74,7 +82,6 @@ export class AuthService {
       finalize(() => this.loading.set(false))
     );
   }
-
   refresh(): Observable<AuthResponse> {
     const token = this.refreshToken();
     if (!token) return throwError(() => new Error('No refresh token available'));
@@ -89,11 +96,20 @@ export class AuthService {
   }
 
   me(): Observable<User> {
-    return this.api.get<User>('auth/me').pipe(tap((user) => this.user.set(user)));
+    return this.api.get<User>('auth/me').pipe(
+      tap((user) => {
+        this.user.set(user);
+        if (this.isBrowser) localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
+      })
+    );
   }
 
   updateProfile(request: UpdateProfileRequest): Observable<User> {
     return this.api.put<User>('auth/profile', request).pipe(tap((user) => this.user.set(user)));
+  }
+
+  uploadAvatar(file: File): Observable<{ url: string; fileName: string; size: number }> {
+    return this.api.uploadAvatar(file);
   }
 
   changePassword(request: ChangePasswordRequest): Observable<unknown> {

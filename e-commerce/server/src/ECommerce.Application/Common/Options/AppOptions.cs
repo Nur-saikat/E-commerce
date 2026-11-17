@@ -5,6 +5,7 @@ public class AppOptions
     public const string SectionName = "App";
     public string FrontendBaseUrl { get; set; } = "http://localhost:4200";
     public bool ExposeResetToken { get; set; } = true;
+    public bool ExposeOtp { get; set; }
     public string[] CorsOrigins { get; set; } = { "http://localhost:4200" };
     public long MaxUploadBytes { get; set; } = 5 * 1024 * 1024;
     public string[] AllowedImageTypes { get; set; } = { "image/jpeg", "image/png", "image/webp", "image/gif" };

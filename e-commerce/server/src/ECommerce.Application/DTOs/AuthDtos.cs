@@ -9,6 +9,20 @@ public class RegisterRequest
     public string? Phone { get; set; }
 }
 
+public class VerifyRegistrationRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+}
+
+public class OtpChallengeResponse
+{
+    public string Email { get; set; } = string.Empty;
+    public int ExpiresInSeconds { get; set; }
+    public int ResendAfterSeconds { get; set; }
+    public string? Otp { get; set; }
+}
+
 public class LoginRequest
 {
     public string Email { get; set; } = string.Empty;

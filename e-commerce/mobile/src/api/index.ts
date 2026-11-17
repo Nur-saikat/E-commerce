@@ -37,6 +37,7 @@ import type {
   OrderQuery,
   OrderReport,
   OrderSummary,
+  OtpChallenge,
   OwnerProfile,
   OwnerProfileRequest,
   Payment,
@@ -81,8 +82,10 @@ type Query = Record<string, any>;
 export const authApi = {
   login: (email: string, password: string) =>
     request<AuthResponse>('/auth/login', { method: 'POST', body: { email, password } }),
-  register: (body: { firstName: string; lastName: string; email: string; password: string; phone?: string }) =>
-    request<AuthResponse>('/auth/register', { method: 'POST', body }),
+  requestRegistrationOtp: (body: { firstName: string; lastName: string; email: string; password: string; phone?: string }) =>
+    request<OtpChallenge>('/auth/register', { method: 'POST', body }),
+  verifyRegistration: (email: string, code: string) =>
+    request<AuthResponse>('/auth/register/verify', { method: 'POST', body: { email, code } }),
   me: () => request<User>('/auth/me'),
   refresh: (refreshToken: string) =>
     request<AuthResponse>('/auth/refresh-token', { method: 'POST', body: { refreshToken } }),
@@ -359,5 +362,11 @@ export const uploadsApi = {
     if (typeof File !== 'undefined' && file instanceof File) form.append('file', file);
     else form.append('file', file as any);
     return request<UploadResult>('/uploads', { method: 'POST', body: form });
+  },
+  uploadAvatar: (file: File | { uri: string; name: string; type: string }) => {
+    const form = new FormData();
+    if (typeof File !== 'undefined' && file instanceof File) form.append('file', file);
+    else form.append('file', file as any);
+    return request<UploadResult>('/uploads/avatar', { method: 'POST', body: form });
   },
 };

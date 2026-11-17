@@ -12,7 +12,7 @@ import { Pagination } from '../../../shared/components/pagination/pagination';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
 
 const ORDER_STATUSES = ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Completed', 'Cancelled', 'Refunded'];
-const PAYMENT_STATUSES = ['Pending', 'Paid', 'Failed', 'Refunded'];
+const PAYMENT_STATUSES = ['Pending', 'AwaitingVerification', 'Paid', 'Failed', 'Refunded'];
 
 @Component({
   selector: 'app-admin-orders',

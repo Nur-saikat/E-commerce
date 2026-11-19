@@ -3,10 +3,12 @@ import { AppEnvironment } from './environment.model';
 
 export type { AppEnvironment } from './environment.model';
 
+const apiBaseUrl = 'http://118.179.41.2:9876/api';
+
 export const environment: AppEnvironment = {
   production: !isDevMode(),
-  apiBaseUrl: 'http://118.179.41.2:9876/api',
-  assetBaseUrl: 'http://localhost:5083'
+  apiBaseUrl,
+  assetBaseUrl: apiBaseUrl.replace(/\/api\/?$/, '')
 };
 
 export const APP_ENV = new InjectionToken<AppEnvironment>('APP_ENV', {

@@ -1,0 +1,36 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex ->
+    // Autolinking must use the same filesystem root as the Gradle build, otherwise
+    // codegen fails with "this and base files have different roots". Build via the
+    // C:\b junction to keep CMake paths short; building from the real path uses it.
+    def shortRoot = new File("C:/b")
+    def launchPath = gradle.startParameter.currentDir.absolutePath.replace('\\', '/').toLowerCase() + '/'
+    def useShortRoot = shortRoot.isDirectory() && launchPath.startsWith('c:/b/')
+
+    // Cached autolinking paths stay valid only for the drive they were generated on.
+    def autolinkDir = new File(settingsDir, "build/generated/autolinking")
+    def autolinkJson = new File(autolinkDir, "autolinking.json")
+    if (autolinkJson.exists()) {
+        def cacheDrive = null
+        try {
+            def deps = new groovy.json.JsonSlurper().parse(autolinkJson).dependencies
+            def sample = deps.values().findResult { it?.platforms?.android?.sourceDir }
+            cacheDrive = sample?.substring(0, 2)?.toLowerCase()
+        } catch (ignored) { }
+        if (cacheDrive != null && cacheDrive != launchPath.substring(0, 2)) {
+            autolinkDir.listFiles()?.each { it.delete() }
+        }
+    }
+    if (useShortRoot) {
+        def npx = System.getProperty("os.name").toLowerCase().contains("windows")
+            ? ["cmd", "/c", "npx", "@react-native-community/cli", "config"]
+            : ["npx", "@react-native-community/cli", "config"]
+        ex.autolinkLibrariesFromCommand(npx, shortRoot)
+    } else {
+        ex.autolinkLibrariesFromCommand()
+    }
+}
+rootProject.name = 'SafwanShop'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')

@@ -1,0 +1,72 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: luxe-mongo
+    restart: unless-stopped
+    command: ["mongod", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: luxe-api
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      MongoDb__ConnectionString: mongodb://mongo:27017
+      MongoDb__DatabaseName: ${MONGO_DB:-LuxeCommerceDb}
+      Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET to a random string of at least 32 characters}
+      Jwt__Issuer: ${JWT_ISSUER:-ECommerce.API}
+      Jwt__Audience: ${JWT_AUDIENCE:-ECommerce.Client}
+      Jwt__AccessTokenMinutes: ${JWT_ACCESS_MINUTES:-30}
+      Jwt__RefreshTokenDays: ${JWT_REFRESH_DAYS:-7}
+      App__FrontendBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      App__CorsOrigins__0: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      App__ExposeResetToken: "false"
+      App__MaxUploadBytes: ${MAX_UPLOAD_BYTES:-5242880}
+      Storage__Provider: Local
+      Storage__LocalPath: /app/wwwroot/uploads
+      Storage__PublicBaseUrl: /uploads
+      Seed__Enabled: ${SEED_ENABLED:-true}
+      Email__SmtpHost: ${SMTP_HOST:-}
+      Email__SmtpPort: ${SMTP_PORT:-587}
+      Email__SmtpUser: ${SMTP_USER:-}
+      Email__SmtpPassword: ${SMTP_PASSWORD:-}
+      Email__FromEmail: ${SMTP_FROM_EMAIL:-no-reply@safwan.store}
+      Email__FromName: ${SMTP_FROM_NAME:-Safwan}
+      Email__EnableSsl: ${SMTP_ENABLE_SSL:-true}
+      Payments__Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Payments__Stripe__PublishableKey: ${STRIPE_PUBLISHABLE_KEY:-}
+      Payments__Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Payments__SslCommerz__StoreId: ${SSLCOMMERZ_STORE_ID:-}
+      Payments__SslCommerz__StorePassword: ${SSLCOMMERZ_STORE_PASSWORD:-}
+      Payments__SslCommerz__Sandbox: ${SSLCOMMERZ_SANDBOX:-true}
+    volumes:
+      - uploads:/app/wwwroot/uploads
+    ports:
+      - "5080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: luxe-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:
+  uploads:

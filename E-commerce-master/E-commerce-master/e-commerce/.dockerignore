@@ -1,0 +1,10 @@
+node_modules
+dist
+.angular
+.git
+.vscode
+server/**/bin
+server/**/obj
+server/src/ECommerce.API/wwwroot/uploads
+**/*.log
+.env

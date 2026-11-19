@@ -1,0 +1,93 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{FAE24AD3-68C8-627F-70AB-BF01DBDA893D}|src\\ECommerce.Domain\\ECommerce.Domain.csproj|f:\\angular\\e-commerce\\e-commerce-master\\e-commerce-master\\e-commerce\\server\\src\\ecommerce.domain\\entities\\content.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{FAE24AD3-68C8-627F-70AB-BF01DBDA893D}|src\\ECommerce.Domain\\ECommerce.Domain.csproj|solutionrelative:src\\ecommerce.domain\\entities\\content.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A105F07D-E555-0938-5B71-03935E061C40}|src\\ECommerce.Infrastructure\\ECommerce.Infrastructure.csproj|f:\\angular\\e-commerce\\e-commerce-master\\e-commerce-master\\e-commerce\\server\\src\\ecommerce.infrastructure\\persistence\\databaseseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A105F07D-E555-0938-5B71-03935E061C40}|src\\ECommerce.Infrastructure\\ECommerce.Infrastructure.csproj|solutionrelative:src\\ecommerce.infrastructure\\persistence\\databaseseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{7BDDC32E-75D2-1E7B-4D57-CFEFA1B49E17}|src\\ECommerce.Application\\ECommerce.Application.csproj|f:\\angular\\e-commerce\\e-commerce-master\\e-commerce-master\\e-commerce\\server\\src\\ecommerce.application\\services\\cartservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{7BDDC32E-75D2-1E7B-4D57-CFEFA1B49E17}|src\\ECommerce.Application\\ECommerce.Application.csproj|solutionrelative:src\\ecommerce.application\\services\\cartservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3606858-6E83-6E41-72A8-03FEB43CEED8}|src\\ECommerce.API\\ECommerce.API.csproj|f:\\angular\\e-commerce\\e-commerce-master\\e-commerce-master\\e-commerce\\server\\src\\ecommerce.api\\controllers\\cartcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3606858-6E83-6E41-72A8-03FEB43CEED8}|src\\ECommerce.API\\ECommerce.API.csproj|solutionrelative:src\\ecommerce.api\\controllers\\cartcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Content.cs",
+              "DocumentMoniker": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Domain\\Entities\\Content.cs",
+              "RelativeDocumentMoniker": "src\\ECommerce.Domain\\Entities\\Content.cs",
+              "ToolTip": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Domain\\Entities\\Content.cs",
+              "RelativeToolTip": "src\\ECommerce.Domain\\Entities\\Content.cs",
+              "ViewState": "AgIAADwAAAAAAAAAAAAwwCsAAAATAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-11-17T17:56:17.186Z",
+              "EditorCaption": "",
+              "OwnerCaption": "%2"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "DatabaseSeeder.cs",
+              "DocumentMoniker": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Infrastructure\\Persistence\\DatabaseSeeder.cs",
+              "RelativeDocumentMoniker": "src\\ECommerce.Infrastructure\\Persistence\\DatabaseSeeder.cs",
+              "ToolTip": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Infrastructure\\Persistence\\DatabaseSeeder.cs",
+              "RelativeToolTip": "src\\ECommerce.Infrastructure\\Persistence\\DatabaseSeeder.cs",
+              "ViewState": "AgIAAD4BAAAAAAAAAAAqwFEBAACJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-11-17T17:47:34.828Z",
+              "OwnerCaption": "%2"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "CartService.cs",
+              "DocumentMoniker": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Application\\Services\\CartService.cs",
+              "RelativeDocumentMoniker": "src\\ECommerce.Application\\Services\\CartService.cs",
+              "ToolTip": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.Application\\Services\\CartService.cs",
+              "RelativeToolTip": "src\\ECommerce.Application\\Services\\CartService.cs",
+              "ViewState": "AgIAAK4AAAAAAAAAAAAIwL4AAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-11-17T16:50:33.258Z",
+              "OwnerCaption": "%2"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "CartController.cs",
+              "DocumentMoniker": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.API\\Controllers\\CartController.cs",
+              "RelativeDocumentMoniker": "src\\ECommerce.API\\Controllers\\CartController.cs",
+              "ToolTip": "F:\\Angular\\E-commerce\\E-commerce-master\\E-commerce-master\\e-commerce\\server\\src\\ECommerce.API\\Controllers\\CartController.cs",
+              "RelativeToolTip": "src\\ECommerce.API\\Controllers\\CartController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-11-17T16:50:21.47Z",
+              "OwnerCaption": "%2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

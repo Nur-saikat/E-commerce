@@ -1,0 +1,463 @@
+# Safwan Commerce
+
+Safwan is a complete, production-style e-commerce platform based in Mirpur, Dhaka, with a curated storefront and a full administration console. The frontend is Angular 22; the backend is ASP.NET Core 10 following Clean Architecture and MongoDB persistence. Every product, category, review, order and setting rendered by the client is loaded from the API — there is no mock or hardcoded catalog data.
+
+- Storefront: `/`
+- Admin console: `/admin`
+- Swagger UI (development): `http://localhost:5080/swagger`
+- API base URL (development): `http://localhost:5080/api`
+
+## Highlights
+
+**Storefront**
+
+- Editorial homepage with hero banners, collections, featured products, promotions, testimonials and newsletter signup — all API-driven.
+- Product listing with search, category/brand/price filters, in-stock and sale filters, sorting and pagination.
+- Product detail page with image gallery and zoom, variant selection, live stock, specifications, related products and verified-purchase reviews.
+- Persistent cart for guests and signed-in customers, guest-cart merge on login, coupons, shipping methods and tax calculation.
+- Wishlist, guest checkout and authenticated checkout, order confirmation, public order tracking and invoice download.
+- COD, Stripe Checkout and SSLCommerz payment flows with server-side verification and webhooks.
+- Account area: profile, password change, saved addresses, order history, order detail/tracking, wishlist and reviews.
+- Content pages: about, FAQ, privacy, terms, shipping and returns, contact; password reset and email verification.
+
+**Administration**
+
+- Dashboard with revenue/order/customer statistics, charts, top products, low-stock alerts and recent orders.
+- Full CRUD for products (including variants and images), categories, brands, coupons, banners, testimonials, shipping methods and site settings.
+- Order management with status transitions, refunds, inventory restoration, invoices and payment history.
+- Customer management, inventory adjustments with transaction ledger, review moderation, contact messages and newsletter subscribers.
+- Sales/order reports, audit log viewer and role/permission management (SuperAdmin, Admin, Manager, Staff, Customer).
+- Permission-based menus and route guards; every administrative API is also authorized server-side.
+
+**Platform**
+
+- JWT access tokens with refresh-token rotation, hashed refresh tokens and token revocation on logout.
+- Granular permission claims (`products.view`, `orders.manage`, …) enforced by a custom authorization policy provider. SuperAdmin bypasses permission checks; customers receive `403` on all admin endpoints.
+- Consistent envelope `{ success, message, data, errors, pagination }`, FluentValidation (`422`), typed DTOs (mass-assignment protection) and global exception handling.
+- Atomic stock decrements with compensation on failure, inventory ledger, overselling and duplicate-payment protection.
+- Rate limiting, CORS, security headers, magic-byte upload validation, file-size limits and audit logging.
+
+## Technology
+
+| Layer | Stack |
+| --- | --- |
+| Frontend | Angular 22 (standalone components, signals, lazy routes), TypeScript, Tailwind CSS v4, RxJS, Reactive Forms, functional HTTP interceptors and guards |
+| Backend | ASP.NET Core 10, C#, Clean Architecture, Repository + Unit of Work, FluentValidation, Swashbuckle |
+| Database | MongoDB 7 via `MongoDB.Driver` 3.x, ObjectId references, indexes, soft delete, audit fields |
+| Auth | JWT HS256, role and permission claims, refresh-token rotation |
+| Payments | Cash on Delivery, Stripe Checkout, SSLCommerz (server-side verification only, no card storage) |
+| Deployment | Multi-stage Dockerfiles, Docker Compose, Nginx reverse proxy, environment-variable configuration |
+
+## Repository layout
+
+```text
+e-commerce/
+├── src/                                  Angular application
+│   ├── app/
+│   │   ├── core/                         models, services, interceptors, guards, stores
+│   │   ├── shared/                       reusable UI components, directives, pipes
+│   │   ├── layouts/                      storefront and admin shells
+│   │   └── features/                     home, products, cart, checkout, account,
+│   │                                     auth, pages, admin/*
+│   ├── environments/                     development and production environment files
+│   ├── styles.css                        Tailwind theme tokens and component classes
+│   └── index.html
+├── server/                               ASP.NET Core solution
+│   ├── ECommerce.slnx
+│   ├── Dockerfile
+│   └── src/
+│       ├── ECommerce.Domain/             entities, enums, constants
+│       ├── ECommerce.Shared/             ApiResponse, PagedResult, PaginationMeta
+│       ├── ECommerce.Application/        DTOs, validators, services, abstractions, options
+│       ├── ECommerce.Infrastructure/     MongoDB repositories/UoW, JWT, payments, storage,
+│       │                                 email, seeding, indexes
+│       └── ECommerce.API/                controllers, middleware, filters, authorization,
+│                                         Program.cs, appsettings*.json
+├── nginx/default.conf                    SPA + API/uploads reverse proxy
+├── docker-compose.yml                    MongoDB + API + web
+├── Dockerfile                            Angular build + Nginx runtime
+├── .env.example                          deployment environment template
+└── README.md
+```
+
+## Prerequisites
+
+- .NET SDK **10.0** or newer
+- Node.js **22.12+** (or 24.x) and npm 11+
+- MongoDB **7** locally, or Docker
+- Docker + Docker Compose for the containerized deployment (optional)
+
+## Local development
+
+### 1. Start MongoDB
+
+Use an existing MongoDB installation:
+
+```bash
+mongod --dbpath /path/to/data
+```
+
+Or run MongoDB in Docker:
+
+```bash
+docker run -d --name safwan-mongo -p 27017:27017 \
+  -v safwan-mongo-data:/data/db mongo:7
+```
+
+The default connection string is `mongodb://localhost:27017` and the database is `LuxeCommerceDb` (see `server/src/ECommerce.API/appsettings.json`).
+
+### 2. Start the API
+
+```bash
+cd server
+dotnet restore ECommerce.slnx
+dotnet run --project src/ECommerce.API --urls http://localhost:5080
+```
+
+In Development the API:
+
+- reads `appsettings.Development.json`, which supplies a development-only JWT secret,
+- enables demo seeding (`Seed:Enabled=true`),
+- exposes password-reset tokens in the API response (`App:ExposeResetToken=true`) for local testing.
+
+Seeding runs only when the users collection is empty. It creates roles, permissions, categories (including **Baby**), brands, 28 products, banners, testimonials, coupons, shipping methods, site settings, sample customers/orders and a Mirpur, Dhaka address. Restarting the API does not duplicate data.
+
+Verify:
+
+```bash
+curl http://localhost:5080/api/health
+curl http://localhost:5080/api/products?page=1&pageSize=4
+```
+
+Swagger UI: `http://localhost:5080/swagger` (the OpenAPI document is at `/swagger/v1/swagger.json`).
+
+### 3. Start the storefront
+
+From the repository root:
+
+```bash
+npm install
+npm start
+```
+
+Open `http://localhost:4200`. The development environment (`src/environments/environment.ts`) points the API at `http://localhost:5080/api` and uploaded images at `http://localhost:5080`.
+
+### Seeded accounts
+
+| Role | Email | Password |
+| --- | --- | --- |
+| SuperAdmin | `admin@luxe.store` | `Admin@12345` |
+| Admin / Manager | `manager@luxe.store` | `Manager@12345` |
+| Customer | `customer@luxe.store` | `Customer@12345` |
+
+Change or remove these accounts before exposing an environment publicly. Set `SEED_ENABLED=false` (or `Seed__Enabled=false`) in production after the first run.
+
+## Configuration
+
+### Frontend
+
+Angular never holds secrets, database credentials or payment secret keys.
+
+| File | Purpose | API base | Asset base |
+| --- | --- | --- | --- |
+| `src/environments/environment.ts` | `ng serve` / development | `http://localhost:5080/api` | `http://localhost:5080` |
+| `src/environments/environment.production.ts` | replaced automatically by `ng build` | `/api` | `""` (same origin) |
+
+The production values assume the SPA and API are served from the same origin behind Nginx, which is how `Dockerfile` and `nginx/default.conf` are set up. If you host the API on another domain, update `apiBaseUrl`/`assetBaseUrl` in `environment.production.ts` and rebuild.
+
+Both environment files export the `APP_ENV` injection token and must keep the same shape. Only publishable Stripe/SSLCommerz identifiers may ever be exposed to the browser; the current checkout redirects to provider-hosted pages, so no provider keys are required in the Angular bundle.
+
+### Backend
+
+Configuration is merged from `appsettings.json`, `appsettings.{Environment}.json`, environment variables and command-line arguments. ASP.NET maps double underscores to sections, e.g. `Jwt__Secret` becomes `Jwt:Secret`.
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `MongoDb__ConnectionString` | `mongodb://localhost:27017` | Use an Atlas `mongodb+srv://` URI in production |
+| `MongoDb__DatabaseName` | `LuxeCommerceDb` | Database name |
+| `Jwt__Secret` | empty | **Required**, at least 32 characters. The API refuses to start otherwise |
+| `Jwt__Issuer` | `ECommerce.API` | Must match token validation |
+| `Jwt__Audience` | `ECommerce.Client` | Must match token validation |
+| `Jwt__AccessTokenMinutes` | `30` | Access-token lifetime |
+| `Jwt__RefreshTokenDays` | `7` | Refresh-token lifetime; tokens rotate on every refresh |
+| `App__FrontendBaseUrl` | `http://localhost:4200` | Used in password-reset/verification links |
+| `App__CorsOrigins__0` | — | Allowed CORS origin(s); add `__1`, `__2` for more |
+| `App__ExposeResetToken` | `false` | Development only; never enable in production |
+| `App__MaxUploadBytes` | `5242880` | Upload limit (5 MB) |
+| `App__AllowedImageTypes__*` | jpeg/png/webp/gif | MIME allow-list; content is also magic-byte checked |
+| `Storage__Provider` | `Local` | Local disk storage |
+| `Storage__LocalPath` | `wwwroot/uploads` | Relative to the API content root |
+| `Storage__PublicBaseUrl` | `/uploads` | Public URL prefix |
+| `Email__SmtpHost` | empty | When blank, emails are logged to the API console |
+| `Email__SmtpPort` / `Email__SmtpUser` / `Email__SmtpPassword` | `587` / empty | SMTP credentials |
+| `Email__FromEmail` / `Email__FromName` | `no-reply@safwan.store` / `Safwan` | Sender identity |
+| `Email__EnableSsl` | `true` | STARTTLS |
+| `Payments__Stripe__SecretKey` | empty | Server-side only |
+| `Payments__Stripe__PublishableKey` | empty | Optional; stored for reference |
+| `Payments__Stripe__WebhookSecret` | empty | Verifies Stripe webhook signatures |
+| `Payments__Stripe__ApiBase` | `https://api.stripe.com/v1` | Stripe API endpoint |
+| `Payments__SslCommerz__StoreId` | empty | SSLCommerz store ID |
+| `Payments__SslCommerz__StorePassword` | empty | SSLCommerz store password |
+| `Payments__SslCommerz__Sandbox` | `true` | Toggle sandbox/live |
+| `Seed__Enabled` | `false` (`true` in Development) | Demo data toggle |
+
+Generate a production JWT secret and keep it outside source control:
+
+```bash
+openssl rand -base64 48
+```
+
+## API
+
+All responses use the same envelope:
+
+```json
+{
+  "success": true,
+  "message": "Request completed successfully",
+  "data": { "items": [], "totalItems": 0, "page": 1, "pageSize": 12, "totalPages": 0 },
+  "errors": [],
+  "pagination": null
+}
+```
+
+List endpoints return `data.items` plus a top-level `pagination` object (`page`, `pageSize`, `totalItems`, `totalPages`). Validation failures return `422` with messages in `errors`; unauthenticated requests return `401`; forbidden requests return `403`; conflicts (duplicate email, insufficient stock, invalid state transitions) return `409`. The complete, always-current contract is in Swagger.
+
+| Group | Representative routes |
+| --- | --- |
+| Auth | `POST /api/auth/register`, `/login`, `/refresh-token`, `/logout`; `GET /me`; `PUT /profile`; `POST /change-password`, `/forgot-password`, `/reset-password`; `GET /verify-email` |
+| Catalog | `GET /api/products` (search, filters, sort, pagination), `GET /api/products/{slug}`, `GET /api/products/{id}/related`, `GET /api/categories`, `GET /api/brands` |
+| Cart & wishlist | `GET/POST/PUT/DELETE /api/cart`, `POST /api/cart/merge?guestId=...`, `GET/POST/DELETE /api/wishlist` (guests identify carts with `X-Cart-Id`) |
+| Coupons | `POST /api/coupons/validate` |
+| Orders | `POST /api/orders`, `GET /api/orders/my-orders`, `GET /api/orders/track`, `GET /api/orders/{id}`, `GET /api/orders/{id}/invoice`, `POST /api/orders/{id}/cancel`, `PUT /api/orders/{id}/status`, `POST /api/orders/{id}/refund`, `GET /api/orders/{id}/payments` (customer/admin ownership enforced) |
+| Payments | `GET /api/payments/providers`, `POST /api/payments/initiate`, `POST /api/payments/verify`, `POST /api/payments/webhook/{provider}` (anonymous but re-verified) |
+| Account | `GET/POST/PUT/DELETE /api/account/addresses`, profile/password endpoints under `/api/auth` |
+| Content & site | `GET /api/home`, `/banners`, `/testimonials`, `/settings`, `/shipping-methods`, `/checkout/config`; `POST /api/contact`, `/newsletter`; notifications under `/api/notifications` |
+| Reviews | Product reviews plus customer review history and admin moderation endpoints |
+| Admin | `/api/admin/dashboard`, `/reports/sales`, `/reports/orders`, `/orders`, `/customers`, `/inventory`, `/audit-logs`, `/roles`, `/permissions`, `/banners`, `/testimonials`, `/contact-messages`, `/newsletter-subscribers`, `/settings`, `/shipping-methods`; product/category/brand/coupon CRUD under `/api/products`, `/api/categories`, `/api/brands`, `/api/coupons` |
+
+Customers can never reach administrative APIs: the client hides admin routes, and the API rejects customer tokens with `403`.
+
+## Payments
+
+Payment secrets stay on the server. The browser is redirected to the provider's hosted page; card data is never received or stored by this application.
+
+### Cash on Delivery
+
+Enabled by default and available immediately.
+
+### Stripe Checkout
+
+1. Set `Payments__Stripe__SecretKey`, `Payments__Stripe__PublishableKey` and `Payments__Stripe__WebhookSecret`.
+2. Restart the API.
+3. Sign in as SuperAdmin or Admin and enable Stripe under **Admin → Settings** (site payment settings are also stored in MongoDB and drive `GET /api/payments/providers`).
+4. Configure the Stripe webhook endpoint:
+
+   ```text
+   https://your-domain.example/api/payments/webhook/stripe
+   ```
+
+   Subscribe to `checkout.session.completed` (and optionally `checkout.session.expired`). The API validates the `Stripe-Signature` header against `Payments__Stripe__WebhookSecret` (five-minute tolerance), reads the Checkout Session id from the event body and re-verifies it with Stripe before fulfilling the order. Unsigned or tampered requests receive `401`.
+
+5. The checkout redirects customers back to the storefront; the callback page calls `POST /api/payments/verify` to confirm the session server-side.
+
+For local testing, use the Stripe CLI:
+
+```bash
+stripe listen --forward-to http://localhost:5080/api/payments/webhook/stripe
+```
+
+### SSLCommerz
+
+1. Set `Payments__SslCommerz__StoreId`, `Payments__SslCommerz__StorePassword` and `Payments__SslCommerz__Sandbox`.
+2. Restart the API and enable SSLCommerz under **Admin → Settings**.
+3. Set the provider's IPN/notification URL to:
+
+   ```text
+   https://your-domain.example/api/payments/webhook/sslcommerz
+   ```
+
+4. The API accepts the provider's form post (`tran_id`/`val_id`), validates the transaction against SSLCommerz and only then marks the order paid. Orders are never fulfilled from unverified client-side redirects.
+
+Webhook handling is idempotent: duplicate callbacks and repeated verification attempts do not double-charge or double-deduct stock.
+
+## File uploads
+
+Product, category and brand images are uploaded through `POST /api/uploads` (admin permission required).
+
+- Allowed types: JPEG, PNG, WebP, GIF — validated by magic bytes as well as MIME type.
+- Default limit: 5 MB (`App__MaxUploadBytes`, Nginx allows 10 MB request bodies).
+- Files are written to `wwwroot/uploads/yyyy/MM` and served at `/uploads/...`.
+- Only randomly generated file names are stored; user-supplied file names are not trusted.
+- In Docker, uploads live in the `uploads` named volume so they survive container rebuilds.
+
+## Build and test
+
+Frontend:
+
+```bash
+npm run build                 # production build → dist/e-commerce/browser
+npm test -- --watch=false     # Vitest, single run
+```
+
+Backend:
+
+```bash
+cd server
+dotnet build ECommerce.slnx -c Release
+dotnet run --project src/ECommerce.API --urls http://localhost:5080
+```
+
+The frontend production build can emit a bundle-size warning (initial bundle slightly above 500 kB) while still succeeding; it is not an error. Vitest specs cover the shared status/label helpers and the asset URL pipe (`npm test`). Backend services were validated end-to-end against a live API and MongoDB; critical flows exercised: registration/login/refresh, catalog filtering, guest and customer carts, coupons, COD checkout, payment verification, order state transitions, refunds with stock restoration, uploads, permission checks, audit logs and admin CRUD.
+
+## Docker Compose deployment
+
+The stack runs three containers: MongoDB, the API and Nginx serving the built SPA and proxying `/api`, `/uploads` and `/swagger` to the API.
+
+1. Create your deployment environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Set at least `JWT_SECRET` in `.env`:
+
+   ```bash
+   openssl rand -base64 48
+   ```
+
+   Keep `.env` out of version control (already ignored).
+
+3. Build and start:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+4. Open:
+
+   - Storefront: `http://localhost:8080`
+   - API: `http://localhost:5080/api`
+   - Swagger: `http://localhost:8080/swagger/`
+
+5. Follow logs:
+
+   ```bash
+   docker compose logs -f api
+   ```
+
+6. Stop:
+
+   ```bash
+   docker compose down
+   ```
+
+The default `SEED_ENABLED=true` seeds demo data on the first start against an empty database. Set it to `false` for a clean production catalog and create your first administrator through the seeded flow or by promoting an existing user; run the seed once in a staging environment if you need the demo content. **Do not run seeded demo data in a live store.**
+
+Useful lifecycle commands:
+
+```bash
+docker compose ps
+docker compose restart api
+docker compose pull
+docker compose up --build -d   # rebuild after code changes
+```
+
+Persistent data lives in the `mongo-data` and `uploads` volumes.
+
+### Nginx
+
+`nginx/default.conf` provides:
+
+- SPA history fallback (`try_files ... /index.html`) for Angular routes.
+- Proxying of `/api/`, `/uploads/` and `/swagger/` to `api:8080` with `X-Forwarded-For`/`X-Forwarded-Proto`. The API consumes those headers (trusting loopback and private container networks) so rate limiting sees real client IPs and callbacks generate correct URLs.
+- Gzip compression, one-year immutable caching for hashed assets, `no-store` for `index.html`.
+- Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` and a Content Security Policy that allows only self-hosted scripts, Google Fonts and self/HTTPS images.
+- `client_max_body_size 10m` so the API can enforce its own 5 MB upload limit.
+
+For HTTPS, terminate TLS at Nginx or a load balancer in front of it, and ensure `X-Forwarded-Proto` is preserved. Update `PUBLIC_BASE_URL` to the public HTTPS origin and add it to `App__CorsOrigins__0`.
+
+## MongoDB Atlas
+
+1. Create an Atlas cluster and database user with `readWrite` on the application database.
+2. Configure network access for your API host (do **not** open the cluster to `0.0.0.0/0` in production).
+3. Set:
+
+   ```text
+   MongoDb__ConnectionString=mongodb+srv://<user>:<password>@<cluster>/LuxeCommerceDb?retryWrites=true&w=majority
+   MongoDb__DatabaseName=LuxeCommerceDb
+   ```
+
+4. Ensure the MongoDB indexes are created — the API creates them during startup via its index initializer.
+5. Keep credentials in the platform secret manager or `.env`, never in Angular or committed `appsettings.json`.
+
+When using Docker Compose with Atlas, override `MongoDb__ConnectionString` in `docker-compose.yml` or a `docker-compose.override.yml`; the bundled `mongo` service can then be removed or left unused.
+
+## Backup and restore
+
+Back up the database with `mongodump`. With Compose:
+
+```bash
+mkdir -p backups
+docker compose exec -T mongo mongodump --db LuxeCommerceDb --archive=/tmp/safwan.gz --gzip
+docker compose cp mongo:/tmp/safwan.gz "backups/safwan-$(date +%F).gz"
+```
+
+Restore (this replaces existing collections — confirm before running in production):
+
+```bash
+docker compose cp backups/safwan-YYYY-MM-DD.gz mongo:/tmp/safwan.gz
+docker compose exec mongo mongorestore --drop --gzip --archive=/tmp/safwan.gz
+```
+
+For Atlas, use `mongodump --uri "$MONGO_URI"` / `mongorestore --uri "$MONGO_URI"` or Atlas Cloud Backup. Back up the `uploads` volume alongside the database; product images are referenced by path and are not stored in MongoDB:
+
+```bash
+docker run --rm -v e-commerce_uploads:/data -v "$PWD/backups:/backup" alpine \
+  tar czf /backup/uploads-$(date +%F).tar.gz -C /data .
+```
+
+Schedule backups daily, retain several generations off-host, and test restores regularly.
+
+## Security notes
+
+- JWT secrets, SMTP credentials and payment secret keys come only from environment variables / server-side configuration. The API refuses to start without a strong JWT secret.
+- Access tokens are short-lived; refresh tokens rotate and are stored hashed. Logout revokes the active refresh token.
+- Authorization is enforced on the server with role and permission policies, not just hidden UI. Customer tokens cannot invoke admin endpoints.
+- Passwords are hashed; password-reset and email-verification tokens are single-use and time-limited. Reset tokens are only returned in API responses when `App:ExposeResetToken` is enabled in Development.
+- DTOs and FluentValidation protect against mass assignment; unexpected fields are ignored and invalid input returns `422`.
+- Rate limiting: 600 requests/minute per IP globally and 20 requests/minute per IP on auth endpoints. Forwarded headers are configured for the bundled proxy.
+- Payments are verified server-side; Stripe webhooks are signature-checked and every webhook payload is re-verified with the provider; no card details are collected or stored.
+- Uploads are validated by MIME type, magic bytes and size, generated names only, and admin-only.
+- Audit middleware records administrative mutations with actor, action, entity and timestamp.
+- Nginx adds security headers and serves the SPA with restrictive caching. Use HTTPS in every non-local environment.
+- Seed accounts are for development only. Disable seeding and change all demo passwords before going live.
+- Uploaded files served from the API origin should be scanned or re-encoded at the edge if you accept untrusted contributors; only administrators can upload here.
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+| --- | --- |
+| API exits with “Jwt:Secret is not configured” | Set `Jwt__Secret` (32+ characters) or run with `ASPNETCORE_ENVIRONMENT=Development` |
+| Empty catalog | Seeding is disabled, or the database is not empty and has no products. Enable `Seed__Enabled` on an empty database or create products in admin |
+| `Unable to connect to MongoDB` | MongoDB is not running or the connection string is wrong. Check `MongoDb__ConnectionString` |
+| Frontend requests fail with CORS errors | Add the frontend origin to `App:CorsOrigins` (`App__CorsOrigins__0`) and restart the API |
+| Production build looks for `http://localhost:5080` | Serve the production build behind the included Nginx config, or update `environment.production.ts` |
+| Emails are not delivered | SMTP is blank, so messages are logged to the API console. Configure the `Email__*` variables |
+| Payment provider is missing at checkout | Provider keys are missing or the provider is disabled under **Admin → Settings** |
+| `429 Too Many Requests` | The per-IP rate limit was exceeded; wait a minute or raise the limits in `Program.cs` |
+| `403` on admin pages | The signed-in account lacks the role/permission, or you are signed in as a customer — use an admin account |
+| Uploads disappear after a container rebuild | Mount the `uploads` volume (already configured in Compose) |
+
+## Design notes
+
+- **Embedded variants.** Product variants are embedded documents inside `Products` rather than a separate `ProductVariants` collection. This keeps variant selection and atomic stock decrements in a single document, avoiding cross-document transactions for the checkout hot path. Variant CRUD is exposed through the product admin APIs.
+- **Money.** Amounts are stored as decimals; totals are computed server-side from the current catalog, coupon and shipping configuration. Client-supplied totals are ignored.
+- **Inventory.** Stock is decremented with conditional atomic updates; if any line fails, previously decremented lines are restored before the order is rejected. Cancellations and refunds restore stock and write compensating ledger entries.
+- **Order identity.** Guest orders are identified by guest email plus an unguessable order id; signed-in customers can only read their own orders. Administrators have explicit access.
+- **Local storage adapter.** The storage abstraction supports local disk today; swapping in S3-compatible storage only requires a new `IStorageService` implementation.
+- **Emails.** With no SMTP host, the email sender logs messages to the API console and writes notifications, which is convenient for local development.
+
+## License
+
+This project was produced as a complete reference implementation. Add your own license before redistribution.

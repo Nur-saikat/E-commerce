@@ -5,7 +5,7 @@ export type { AppEnvironment } from './environment.model';
 
 export const environment: AppEnvironment = {
   production: !isDevMode(),
-  apiBaseUrl: 'http://localhost:5083/api',
+  apiBaseUrl: 'http://118.179.41.2:9876/api',
   assetBaseUrl: 'http://localhost:5083'
 };
 
